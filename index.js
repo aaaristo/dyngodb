@@ -455,10 +455,10 @@ module.exports= function (opts,cb)
                             if (projection[attr]==-1)
                               attrsToRemove.push(attr);
                             else
-                              throw new Error('unknown projection value');
+                              p.trigger.error(new Error('unknown projection value'));
                         }
                         else
-                          throw new Error('invalid projection value');
+                          p.trigger.error(new Error('invalid projection value'));
                  });
 
                  if (attrs.length==1)
@@ -487,13 +487,7 @@ module.exports= function (opts,cb)
                                 p.trigger.notfound();
                            });
                       },{ attrs: attrs })
-                      .error(function (err)
-                      {
-                         if (err.code=='notfound')
-                           p.trigger.notfound();
-
-                         p.trigger.error(); 
-                      });
+                      .error(p.trigger.error); 
                }
                else
                if (scan) 
@@ -525,7 +519,8 @@ module.exports= function (opts,cb)
                                 p.trigger.notfound();
                            });
                            //p.trigger.results(items);
-                      },{ filter: filter, attrs: attrs });
+                      },{ filter: filter, attrs: attrs })
+                      .error(p.trigger.error);
                }
                else
                {
@@ -590,13 +585,7 @@ module.exports= function (opts,cb)
                           }
                        });
                   },{ attrs: ['$id','$pos'], desc: sort&&!sort.asc })
-                  .error(function (err)
-                  {
-                        if (err.code=='notfound')
-                          p.trigger.notfound();
-                        else
-                          p.trigger.error(err);
-                  });
+                  .error(p.trigger.error);
                }
             };
 
@@ -630,7 +619,6 @@ module.exports= function (opts,cb)
                 {
                      p.trigger.result(items[0]); 
                 })
-                .notfound(p.trigger.notfound)
                 .error(p.trigger.error);
 
                 return p;
@@ -718,7 +706,7 @@ module.exports= function (opts,cb)
                        ops.push({ op: 'put', item: _.omit(obj,['$old']) });
                     };
 
-                var p= dyn.promise('success');
+                var p= dyn.promise();
 
                 _save(obj);
 
@@ -732,7 +720,7 @@ module.exports= function (opts,cb)
 
             table.ensureIndex= function (fields)
             {
-                  var p= dyn.promise('success'),
+                  var p= dyn.promise(),
                       index= _index(dyn,table,fields);
 
                   index.ensure(function (err)
@@ -751,7 +739,7 @@ module.exports= function (opts,cb)
 
             table.remove= function ()
             {
-                var p= dyn.promise('success'),
+                var p= dyn.promise(),
                     _deleteItem= function (obj,done)
                     {
                           async.parallel([
@@ -792,7 +780,7 @@ module.exports= function (opts,cb)
 
             table.update= function (query,update)
             {
-                var p= dyn.promise('success'),
+                var p= dyn.promise(),
                     _updateItem= function (item,done)
                     {
                        if (update.$set)
@@ -817,7 +805,7 @@ module.exports= function (opts,cb)
 
             table.drop= function ()
             {
-                var p= dyn.promise('success'),
+                var p= dyn.promise(),
                     _alias= function (name)
                     {
                         var alias= name;
@@ -890,7 +878,7 @@ module.exports= function (opts,cb)
 
    db.createCollection= function (name)
    { 
-      var p= dyn.promise('success'),
+      var p= dyn.promise(),
           _success= function ()
           {
               dyn.describeTable(name,function (err,data)

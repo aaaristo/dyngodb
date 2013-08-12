@@ -104,11 +104,16 @@ dyngo(function (err,db)
 
                promise= promise || {};
 
-               if (promise.notfound)
-                 promise.notfound(_ask(function () { console.log('no data found'.yellow); }));
-
                if (promise.error)
-                 promise.error(_ask(function (err) { if (err) console.log((err+'').red,err.stack); }));
+                 promise.error(_ask(function (err) 
+                 { 
+                     if (!err) return;
+
+                     if (err.code=='notfound')
+                       console.log('no data found'.yellow);
+                     else
+                       console.log((err+'').red,err.stack); 
+                 }));
 
                if (promise.result)
                  promise.result(_ask(function (obj) { _print(obj); elapsed(); }));
