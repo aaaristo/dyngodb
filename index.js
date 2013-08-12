@@ -486,7 +486,7 @@ module.exports= function (opts,cb)
                               else
                                 p.trigger.notfound();
                            });
-                      },{ attrs: attrs })
+                      },{ attrs: attrs, limit: modifiers.limit })
                       .error(p.trigger.error); 
                }
                else
@@ -519,7 +519,7 @@ module.exports= function (opts,cb)
                                 p.trigger.notfound();
                            });
                            //p.trigger.results(items);
-                      },{ filter: filter, attrs: attrs })
+                      },{ filter: filter, attrs: attrs, limit: modifiers.limit })
                       .error(p.trigger.error);
                }
                else
@@ -584,25 +584,33 @@ module.exports= function (opts,cb)
                               p.trigger.notfound();
                           }
                        });
-                  },{ attrs: ['$id','$pos'], desc: sort&&!sort.asc })
+                  },{ attrs: ['$id','$pos'], desc: sort&&!sort.asc, limit: modifiers.limit })
                   .error(p.trigger.error);
                }
             };
 
             table.find= function ()
             {
-                var p, orderby, args= arguments;
+                var p, modifiers= {}, args= arguments;
 
                 p= dyn.promise('results','notfound');
 
+                modifiers.promise= p;
+
                 process.nextTick(function ()
                 {
-                   buildQuery.apply({ orderby: orderby, promise: p },args);
+                   buildQuery.apply(modifiers,args);
                 });
 
                 p.sort= function (o)
                 {
-                  orderby= o; 
+                  modifiers.orderby= o; 
+                  return p;
+                };
+
+                p.limit= function (n)
+                {
+                  modifiers.limit= n; 
                   return p;
                 };
 
@@ -615,7 +623,7 @@ module.exports= function (opts,cb)
 
                 p= dyn.promise('result','notfound');
 
-                table.find.apply(table,args).results(function (items)
+                table.find.apply(table,args).limit(1).results(function (items)
                 {
                      p.trigger.result(items[0]); 
                 })
