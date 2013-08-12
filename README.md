@@ -21,6 +21,8 @@ $ dyngodb
 > last.city= 'London'
 > db.test.save(last)
 > db.test.find({ name: 'John' })
+> db.test.ensureIndex({ name: 'S' })
+> db.test.findOne({ name: 'John' })
 > db.test.remove()
 > db.test.drop()
 </pre>
