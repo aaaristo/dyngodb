@@ -470,8 +470,9 @@ module.exports= function (opts,cb)
                    console.log('PK on '+table._dynamo.TableName+' for '+JSON.stringify(cond,null,2));
                       dyn.table(table._dynamo.TableName)
                          .hash('$id',cond.$id)
-                         .query(function (items)
+                         .query(function (_items)
                       {
+                           var items= modifiers.skip ? _items.slice(modifiers.skip) : _items;
                            async.forEach(items,function (item,done)
                            {
                               load(item,done);
@@ -502,8 +503,10 @@ module.exports= function (opts,cb)
 
                    console.log('SCAN on '+table._dynamo.TableName+' for '+JSON.stringify(cond,null,2));
                    dyn.table(table._dynamo.TableName)
-                      .scan(function (items)
+                      .scan(function (_items)
                       {
+                           var items= modifiers.skip ? _items.slice(modifiers.skip) : _items;
+
                            async.forEach(items,function (item,done)
                            {
                               load(item,done);
@@ -543,9 +546,10 @@ module.exports= function (opts,cb)
                   if (sort)
                     tab.index(sort.field);
 
-                  tab.query(function (items)
+                  tab.query(function (_items)
                   {
-                       var notfound= [];
+                       var items= modifiers.skip ? _items.slice(modifiers.skip) : _items,
+                           notfound= [];
 
                        async.forEach(items,function (item,done)
                        {
@@ -611,6 +615,12 @@ module.exports= function (opts,cb)
                 p.limit= function (n)
                 {
                   modifiers.limit= n; 
+                  return p;
+                };
+
+                p.skip= function (n)
+                {
+                  modifiers.skip= n; 
                   return p;
                 };
 
