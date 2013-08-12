@@ -28,6 +28,21 @@ const _traverse= function (o, fn)
             }
             return o;
       },
+      _soa = function(o, s, v)
+      {
+            s = s.replace(/\[(\w+)\]/g, '.$1'); // convert indexes to properties
+            s = s.replace(/^\./, '');           // strip a leading dot
+            var a = s.split('.'),
+                prop= a.pop();
+
+            while (a.length) 
+            {
+                var n = a.shift();
+                o = o[n] || (o[n]={});
+            }
+
+            o[prop]= v;
+      },
       _deepclone= function (obj)
       {
          return JSON.parse(JSON.stringify(obj));
@@ -300,18 +315,37 @@ module.exports= function (opts,cb)
             var buildQuery= function (cond,projection)
             {
                var filter= {},
-                   attrs,
-                   attrsToRemove= [], 
+                   projectionStack= [],
                    modifiers= this,
                    cache= {},
-                   get= function (hash,pos,done)
+                   _projection= function (root)
                    {
-                       var found;
-                       var _hash= cache[hash]= cache[hash] || [];
+                      var proj= { include: ['$id','$ref'], exclude: []};
 
-                       if (!(found=cache[hash][pos]))
-                       {
-                         _hash[pos]= true; 
+                      _.keys(root).forEach(function (attr)
+                      {
+                          if (root[attr].$include)
+                          {
+                            proj.include.push(attr);
+                            proj.include.push('$$'+attr);
+                            proj.include.push('$$$'+attr);
+                          }
+                          else
+                          if (root[attr].$exclude)
+                          {
+                            proj.exclude.push(attr);
+                            proj.exclude.push('$$'+attr);
+                            proj.exclude.push('$$$'+attr);
+                          }
+                      });
+
+                      if (proj.include.length==2)
+                        proj.include= undefined;
+
+                      return proj;
+                   },
+                   get= function (hash,pos,done,opts)
+                   {
                          dyn.table(table._dynamo.TableName)
                             .hash('$id',hash)
                             .range('$pos',pos)
@@ -321,51 +355,56 @@ module.exports= function (opts,cb)
                                _hash[pos]= value; 
                                console.log('got',hash);
                                done(null,value); 
-                            })
+                            },opts)
                             .error(done);
-                       }
-                       else
-                       if (found===true)
-                         setTimeout(get,100,hash,pos,done);
-                       else
-                         done(null,found);
                    },
-                   load= function (item,__done)
+                   load= function (item,__done,proot)
                    {
                        console.log('load',item.$id,item.$ref);
-                       var done= function (err)
-                       {
-                            if (err)
-                              __done(err);
-                            else
-                            {
-                               attrsToRemove.forEach(function (attr)
-                               {
-                                   if (item[attr])
-                                     delete item[attr]; 
-                               });
+                       var attrs= _projection(proot),
+                           done= function (err)
+                           {
+                                if (err)
+                                  __done(err);
+                                else
+                                {
+                                   attrs.exclude.forEach(function (attr)
+                                   {
+                                       if (item[attr])
+                                         delete item[attr]; 
+                                   });
 
-                               item.$old= _deepclone(item);
-                               __done();
-                            }
-                       };
+                                   item.$old= _deepclone(item);
+                                   __done();
+                                }
+                           };
+
+                       attrs.exclude.forEach(function (attr)
+                       {
+                           if (item[attr])
+                             delete item[attr]; 
+                       });
 
                        async.forEach(Object.keys(item),
                        function (field,done)
                        {
                            if (field.indexOf('$$$')==0)
                            {
-                             var attr= field.substring(3);
+                             var attr= field.substring(3),
+                                 aroot= proot[attr] || {},
+                                 _attrs= _projection(aroot);
 
-                             if (!_.contains(attrsToRemove,attr))
+                             if (!_.contains(attrs.exclude,attr))
                                dyn.table(table._dynamo.TableName)
                                   .hash('$id',item[field])
                                   .query(function (values)
                                   {
                                        item[attr]= values;
 
-                                       async.forEach(values,load,done);
-                                  })
+                                       async.forEach(values,
+                                                     function (item,done) { load(item,done,aroot); },
+                                                     done);
+                                  },{ attrs: _attrs.include })
                                   .error(done);
                              else
                              {
@@ -376,9 +415,11 @@ module.exports= function (opts,cb)
                            else
                            if (field.indexOf('$$')==0)
                            {
-                             var attr= field.substring(2);
+                             var attr= field.substring(2),
+                                 aroot= proot[attr] || {},
+                                 _attrs= _projection(aroot);
 
-                             if (!_.contains(attrsToRemove,attr))
+                             if (!_.contains(attrs.exclude,attr))
                                  get(item[field],0,function (err,value)
                                  {
                                      if (err) done(err);
@@ -387,11 +428,11 @@ module.exports= function (opts,cb)
                                          item[attr]= value;
 
                                          if (typeof value=='object')
-                                           load(value,done);
+                                           load(value,done,aroot);
                                          else
                                            done();
                                      }
-                                 });
+                                 },{ attrs: _attrs.include });
                              else
                              {
                                 delete item[field];
@@ -405,11 +446,12 @@ module.exports= function (opts,cb)
                                  if (err) done(err);
                                  else
                                  {
+console.log(value);
                                      _.extend(item,value);
                                      delete item.$ref;
-                                     load(item,done);
+                                     load(item,done,proot);
                                  }
-                             });
+                             },{ attrs: attrs.include });
                            else
                              done();
                        },
@@ -435,35 +477,29 @@ module.exports= function (opts,cb)
                       }
                  });
 
-               var p= modifiers.promise; 
+               var p= modifiers.promise, projectionRoot= {};
 
                if (projection)
                {
-                 attrs= ['$id'];
+                 var current= projectionRoot;
 
                  _.keys(projection).forEach(function (attr)
                  { 
-                        if (attr.indexOf('$')!=0)
-                        {
-                            if (projection[attr]==1)
-                            {
-                              attrs.push(attr);
-                              attrs.push('$$'+attr);
-                              attrs.push('$$$'+attr);
-                            }
-                            else
-                            if (projection[attr]==-1)
-                              attrsToRemove.push(attr);
-                            else
-                              p.trigger.error(new Error('unknown projection value'));
-                        }
-                        else
-                          p.trigger.error(new Error('invalid projection value'));
+                       if (projection[attr]==1)
+                         _soa(projectionRoot,attr,{ $include: true }); 
+                       else
+                       if (projection[attr]==-1)
+                         _soa(projectionRoot,attr,{ $exclude: true }); 
+                       else
+                         p.trigger.error(new Error('unknown projection value'));
                  });
-
-                 if (attrs.length==1)
-                   attrs= undefined;
                }
+
+               console.log(projectionRoot);
+
+               var attrs= _projection(projectionRoot);
+
+               console.log(attrs);
 
                if (pk)
                {
@@ -475,7 +511,7 @@ module.exports= function (opts,cb)
                            var items= modifiers.skip ? _items.slice(modifiers.skip) : _items;
                            async.forEach(items,function (item,done)
                            {
-                              load(item,done);
+                              load(item,done,projectionRoot);
                            },
                            function (err)
                            {
@@ -487,7 +523,7 @@ module.exports= function (opts,cb)
                               else
                                 p.trigger.notfound();
                            });
-                      },{ attrs: attrs, limit: modifiers.limit })
+                      },{ attrs: attrs.include, limit: modifiers.limit })
                       .error(p.trigger.error); 
                }
                else
@@ -509,7 +545,7 @@ module.exports= function (opts,cb)
 
                            async.forEach(items,function (item,done)
                            {
-                              load(item,done);
+                              load(item,done,projectionRoot);
                            },
                            function (err)
                            {
@@ -522,7 +558,7 @@ module.exports= function (opts,cb)
                                 p.trigger.notfound();
                            });
                            //p.trigger.results(items);
-                      },{ filter: filter, attrs: attrs, limit: modifiers.limit })
+                      },{ filter: filter, attrs: attrs.include, limit: modifiers.limit })
                       .error(p.trigger.error);
                }
                else
@@ -558,8 +594,8 @@ module.exports= function (opts,cb)
                              .range('$pos',item.$pos)
                              .get(function (gitem)
                           {
-                             load(_.extend(item,gitem),done);
-                          },{ attrs: attrs })
+                             load(_.extend(item,gitem),done,projectionRoot);
+                          },{ attrs: attrs.include })
                           .error(function (err)
                           {
                              if (err.code=='notfound')
