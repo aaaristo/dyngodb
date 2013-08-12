@@ -9,6 +9,9 @@ Playing around:
 $ npm install -g dyngodb
 </pre>
 <pre>
+$ export AWS_ACCESS_KEY_ID=......
+$ export AWS_SECRET_ACCESS_KEY=......
+$ export AWS_REGION=eu-west-1
 $ dyngodb
 > db.createCollection('test')
 > db.test.save({ name: 'John', lname: 'Smith' })
