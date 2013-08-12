@@ -4,7 +4,7 @@ dyngodb
 An experiment to get a MongoDB like interface in front of DynamoDB
 
 ## Getting started
-The simplest way to get started is:
+Playing around:
 <pre>
 $ npm install -g dyngodb
 </pre>
