@@ -4,6 +4,10 @@ var dyno= require('./lib/dyn.js'),
     _= require('underscore'),
     async= require('async'); 
 
+var _parser= require('./lib/parser'), 
+    _finder= require('./lib/finder'),
+    _refiner= require('./lib/refiner');
+
 const _traverse= function (o, fn)
       {
          Object.keys(o).forEach(function (i)
@@ -295,6 +299,8 @@ module.exports= function (opts,cb)
    opts= opts || {};
 
    var dyn= dyno(opts.dynamo),
+       finder= _finder(dyn),
+       parser= _parser(dyn),
        db= {};
 
    db.cleanup= function (obj)
@@ -353,14 +359,12 @@ module.exports= function (opts,cb)
                             {
                                var _hash= cache[hash]= cache[hash] || [];
                                _hash[pos]= value; 
-                               console.log('got',hash);
                                done(null,value); 
                             },opts)
                             .error(done);
                    },
                    load= function (item,__done,proot)
                    {
-                       console.log('load',item.$id,item.$ref);
                        var attrs= _projection(proot),
                            done= function (err)
                            {
@@ -446,7 +450,6 @@ module.exports= function (opts,cb)
                                  if (err) done(err);
                                  else
                                  {
-console.log(value);
                                      _.extend(item,value);
                                      delete item.$ref;
                                      load(item,done,proot);
@@ -666,17 +669,27 @@ console.log(value);
                }
             };
 
-            table.find= function ()
+            table.find= function (cond,projection)
             {
-                var p, modifiers= {}, args= arguments;
+                var p, modifiers= {};
 
                 p= dyn.promise('results','notfound');
 
-                modifiers.promise= p;
-
                 process.nextTick(function ()
                 {
-                   buildQuery.apply(modifiers,args);
+       //            buildQuery.apply(modifiers,args);
+
+                   parser
+                   .parse(table,modifiers,cond,projection)
+                   .parsed(function (query)
+                   {
+                       refiner= _refiner(dyn,query),
+                       cursor= finder.find(query);
+                       cursor.chain(refiner);
+                       refiner.chain(p);
+                   })
+                   .error(p.trigger.error);
+
                 });
 
                 p.sort= function (o)
