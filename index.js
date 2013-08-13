@@ -532,8 +532,46 @@ console.log(value);
                    if (cond)
                      Object.keys(cond).forEach(function (field)
                      {
-                           filter[field]= { values: [ cond[field] ],
-                                                op: 'EQ' };
+                           var val= cond[field], type= typeof val,
+                               _field= function (field,val,op)
+                               {
+                                  filter[field]= { values: val===undefined ? [] : (Array.isArray(val) ? val : [ val ]),
+                                                       op: op };
+                               };
+ 
+                           if (type=='object')
+                           {
+                               if (Array.isArray(val))
+                                    _field(field,val,'IN');
+                               else
+                               {
+                                    if (val.$ne!==undefined)
+                                      _field(field,val.$ne,'NE');
+                                    else
+                                    if (val.$gt!==undefined)
+                                      _field(field,val.$gt,'GT');
+                                    else
+                                    if (val.$lt!==undefined)
+                                      _field(field,val.$lt,'LT');
+                                    else
+                                    if (val.$gte!==undefined)
+                                      _field(field,val.$gte,'GE');
+                                    else
+                                    if (val.$lte!==undefined)
+                                      _field(field,val.$lte,'LE');
+                                    else
+                                    if (val.$in!==undefined)
+                                      _field(field,val.$in,'IN');
+                                    else
+                                    if (val.$exists!==undefined)
+                                      _field(field,undefined, val.$exists ? 'NOT_NULL' : 'NULL');
+                                    else
+                                      p.trigger.error(new Error('Unknown conditional operator: '+JSON.stringify(val)));
+                               }
+                           }
+                           else
+                               filter[field]= { values: [ val ],
+                                                    op: 'EQ' };
                            
                      });
 
