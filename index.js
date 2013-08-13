@@ -477,7 +477,7 @@ console.log(value);
                       }
                  });
 
-               var p= modifiers.promise, projectionRoot= {};
+               var p= modifiers.promise, projectionRoot= {}, stop= false;
 
                if (projection)
                {
@@ -491,15 +491,13 @@ console.log(value);
                        if (projection[attr]==-1)
                          _soa(projectionRoot,attr,{ $exclude: true }); 
                        else
-                         p.trigger.error(new Error('unknown projection value'));
+                       { stop= true; p.trigger.error(new Error('unknown projection value '+JSON.stringify(projection[attr]))); }
                  });
                }
 
-               console.log(projectionRoot);
+               if (stop) return;
 
                var attrs= _projection(projectionRoot);
-
-               console.log(attrs);
 
                if (pk)
                {
@@ -566,14 +564,15 @@ console.log(value);
                                     if (val.$exists!==undefined)
                                       _field(field,undefined, val.$exists ? 'NOT_NULL' : 'NULL');
                                     else
-                                      p.trigger.error(new Error('Unknown conditional operator: '+JSON.stringify(val)));
+                                    { stop= true; p.trigger.error(new Error('Unknown conditional operator: '+JSON.stringify(val))); }
                                }
                            }
                            else
-                               filter[field]= { values: [ val ],
-                                                    op: 'EQ' };
+                             _field(field,val,'EQ');
                            
                      });
+
+                   if (stop) return;
 
                    console.log('SCAN on '+table._dynamo.TableName+' for '+JSON.stringify(cond,null,2));
                    dyn.table(table._dynamo.TableName)
