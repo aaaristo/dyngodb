@@ -209,18 +209,25 @@ module.exports= function (opts,cb)
 
             table.ensureIndex= function (fields)
             {
-                  var p= dyn.promise(),
-                      index= _index(dyn,table,fields);
+                  var p= dyn.promise();
 
-                  index.ensure(function (err)
+                  process.nextTick(function ()
                   {
-                     if (err)
-                       p.trigger.error(err);
-                     else
-                     {
-                       table.indexes.push(index);
-                       p.trigger.success();
-                     }
+                      var index= _index(dyn,table,fields);
+
+                      if (index)
+                        index.ensure(function (err)
+                        {
+                             if (err)
+                               p.trigger.error(err);
+                             else
+                             {
+                               table.indexes.push(index);
+                               p.trigger.success();
+                             }
+                        });
+                      else
+                        p.trigger.error(new Error('no known index type can index those fields'));
                   });
 
                   return p;
