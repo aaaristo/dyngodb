@@ -128,7 +128,7 @@ dyngo(function (err,db)
             }
             catch (ex)
             {
-               console.log('unknown command'.red);
+               console.log('unknown command'.red,ex,ex.stack);
                ask();
             }
 
