@@ -143,8 +143,6 @@ module.exports= function (opts,cb)
                        var _keys= _.keys(obj),
                            diffs= diff(obj.$old || {},_.omit(obj,'$old'));
 
-                       console.log(diffs);
-
                        if ((obj.$id&&_keys.length==1)||!diffs) return;
 
                        _hashrange(obj);
@@ -195,14 +193,23 @@ module.exports= function (opts,cb)
                        ops.push({ op: 'put', item: _.omit(obj,['$old']) });
                     };
 
-                var p= dyn.promise();
+                var p= dyn.promise(), found= false;
 
                 _save(obj);
 
-                console.log(JSON.stringify(gops,null,2));
+                _.keys(gops).forEach(function (table)
+                {
+                    if (gops[table].length==0)
+                      delete gops[table];
+                    else
+                      found= true;
+                });
 
-                dyn.mput(gops,p.trigger.success)
-                   .error(p.trigger.error);
+                if (found)
+                    dyn.mput(gops,p.trigger.success)
+                       .error(p.trigger.error);
+                else
+                    process.nextTick(p.trigger.success);
 
                 return p;
             };
@@ -281,6 +288,11 @@ module.exports= function (opts,cb)
                     {
                        if (update.$set)
                          table.save(_.extend(item,update.$set))
+                              .success(done)
+                              .error(done); 
+                       else
+                       if (update.$unset)
+                         table.save(_.omit(item,_.keys(update.$unset)))
                               .success(done)
                               .error(done); 
                        else
