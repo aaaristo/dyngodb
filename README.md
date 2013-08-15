@@ -24,7 +24,7 @@ $ dyngodb
 > db.test.find({ name: 'John' })
 > db.test.ensureIndex({ name: 'S' })
 > db.test.findOne({ name: 'John' })
-> db.prova.ensureIndex({ $search: { domain: 'mycstestdomain', lang: 'it' } }); /* some CloudSearch */
+> db.prova.ensureIndex({ $search: { domain: 'mycstestdomain', lang: 'en' } }); /* some CloudSearch */
 > db.test.update({ name: 'John' },{ $set: { city: 'Boston' } });
 > db.prova.find({ $search: { q: 'Boston' } });
 > db.test.remove()
