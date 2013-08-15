@@ -27,7 +27,9 @@ const getUserHome= function()
       saveHistory= function ()
       {
           var historyFile= path(getUserHome(),'.dyngodb_history');
-          fs.writeFileSync(historyFile,JSON.stringify(_history),'utf8');
+        
+          if (_history&&_history.length>0)
+            fs.writeFileSync(historyFile,JSON.stringify(_history),'utf8');
       };
 
 process.on('exit', saveHistory);
