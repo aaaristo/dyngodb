@@ -2,6 +2,7 @@ dyngodb
 =======
 
 An experiment to get a MongoDB like interface in front of DynamoDB
+and CloudSearch
 
 ## Getting started
 Playing around:
@@ -23,6 +24,9 @@ $ dyngodb
 > db.test.find({ name: 'John' })
 > db.test.ensureIndex({ name: 'S' })
 > db.test.findOne({ name: 'John' })
+> db.prova.ensureIndex({ $search: { domain: 'mycstestdomain', lang: 'it' } }); /* some CloudSearch */
+> db.test.update({ name: 'John' },{ $set: { city: 'Boston' } });
+> db.prova.find({ $search: { q: 'Boston' } });
 > db.test.remove()
 > db.test.drop()
 </pre>
