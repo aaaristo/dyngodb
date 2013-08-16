@@ -120,6 +120,9 @@ dyngo(function (err,db)
                        console.log((err+'').red,err.stack); 
                  }));
 
+               if (promise.count)
+                 promise.count(_ask(function (count) { console.log(count); elapsed(); }));
+               
                if (promise.result)
                  promise.result(_ask(function (obj) { _print(obj); elapsed(); }));
                else

@@ -58,20 +58,25 @@ module.exports= function (opts,cb)
             {
                 var p, modifiers= {};
 
-                p= dyn.promise('results','notfound');
+                p= dyn.promise(['results','count'],'notfound');
 
                 process.nextTick(function ()
                 {
        //            buildQuery.apply(modifiers,args);
-
                    parser
                    .parse(table,modifiers,cond,projection)
                    .parsed(function (query)
                    {
                        refiner= _refiner(dyn,query),
                        cursor= finder.find(query);
-                       cursor.chain(refiner);
-                       refiner.chain(p);
+
+                       if (query.count)
+                          cursor.chain(p);
+                       else
+                       {
+                           cursor.chain(refiner);
+                           refiner.chain(p);
+                       }
                    })
                    .error(p.trigger.error);
 
@@ -92,6 +97,18 @@ module.exports= function (opts,cb)
                 p.skip= function (n)
                 {
                   modifiers.skip= n; 
+                  return p;
+                };
+
+                var origCount= _.bind(p.count,p);
+
+                p.count= function (fn)
+                {
+                  if (fn)
+                     origCount(fn);
+                  else
+                     modifiers.count= true; 
+
                   return p;
                 };
 
