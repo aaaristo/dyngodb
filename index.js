@@ -106,7 +106,7 @@ module.exports= function (opts,cb)
                 {
                   if (fn)
                      origCount(fn);
-                  else
+                  else 
                      modifiers.count= true; 
 
                   return p;
