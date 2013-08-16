@@ -115,7 +115,7 @@ module.exports= function (opts,cb)
 
             table.save= function (_obj)
             {
-                var obj= JSON.parse(JSON.stringify(_obj)), 
+                var obj= _deepclone(_obj), 
                     gops= {},
                     ops= gops[table._dynamo.TableName]= [];
 
@@ -190,10 +190,52 @@ module.exports= function (opts,cb)
                               delete obj[key];
                        });
 
-                       ops.push({ op: 'put', item: _.omit(obj,['$old']) });
+                       ops.push({ op: 'put', item: obj });
+                    },
+                    _mput= function (gops,done)
+                    {
+                       async.forEach(_.keys(gops),
+                       function (_table,done)
+                       {
+                          var tops= gops[_table];
+
+                          async.forEach(tops,
+                          function (op,done)
+                          {
+                             var tab= dyn.table(table._dynamo.TableName),
+                                 obj= op.item;
+                               
+                             if (obj.$id!==undefined)
+                               tab.hash('$id',obj.$id)
+                                  .range('$pos',obj.$pos);
+                             else
+                             if (obj.$hash!==undefined)
+                               tab.hash('$hash',obj.$hash)
+                                  .range('$range',obj.$range);
+                             else
+                             {
+                                done(new Error('unknown record type'));
+                                return;
+                             }
+
+                             if (op.op=='put')
+                                 tab.put(_.omit(obj,['$old']),
+                                  done,
+                                  { expected: obj.$old ? { $version: obj.$old.$version } : undefined })
+                                  .error(done);
+                             else
+                             if (op.op=='del')
+                                 tab.delete(done)
+                                 .error(done);
+                             else
+                               done(new Error('unknown update type:'+op.op));
+                          },
+                          done);
+                       },
+                       done);
                     };
 
-                var p= dyn.promise(), found= false;
+                var p= dyn.promise([],'updatedsinceread'), found= false;
 
                 _save(obj);
 
@@ -206,8 +248,24 @@ module.exports= function (opts,cb)
                 });
 
                 if (found)
-                    dyn.mput(gops,p.trigger.success)
-                       .error(p.trigger.error);
+                  _mput(gops,function (err)
+                  {
+                      if (err)
+                      {
+                        if (err.code='notfound')
+                          p.trigger.updatedsinceread();
+                        else
+                          p.trigger.error(err);
+                      }
+                      else
+                      {
+                        table.findOne({ $id: _obj.$id, $pos: _obj.$pos }).result(function (item)
+                        {
+                            _.extend(_obj,item);
+                            p.trigger.success();
+                        });
+                      }
+                  });
                 else
                     process.nextTick(p.trigger.success);
 

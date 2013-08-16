@@ -114,6 +114,9 @@ dyngo(function (err,db)
                      if (err.code=='notfound')
                        console.log('no data found'.yellow);
                      else
+                     if (err.code=='updatedsinceread')
+                       console.log('The item is changed since you read it'.red);
+                     else
                        console.log((err+'').red,err.stack); 
                  }));
 
