@@ -164,7 +164,8 @@ module.exports= function (opts,cb)
                            _omit= ['$old'],
                            diffs= diff(obj.$old || {},_.omit(obj,'$old'));
 
-                       if ((obj.$id&&_keys.length==1)||!diffs||obj.$old.$version<obj.$version) return;
+                       if ((obj.$id&&_keys.length==1)||!diffs
+                            ||(obj.$old || {$version: 0}).$version<obj.$version) return;
 
                        _hashrange(obj);
                        _index(obj);
