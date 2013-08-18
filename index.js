@@ -54,7 +54,7 @@ module.exports= function (opts,cb)
 
    var configureTable= function (table)
        {
-            table.find= function (cond,projection)
+            table.find= function (cond,projection,identity)
             {
                 var p, modifiers= {};
 
@@ -64,7 +64,7 @@ module.exports= function (opts,cb)
                 {
        //            buildQuery.apply(modifiers,args);
                    parser
-                   .parse(table,modifiers,cond,projection)
+                   .parse(table,modifiers,cond,projection,identity)
                    .parsed(function (query)
                    {
                        refiner= _refiner(dyn,query),
@@ -130,10 +130,9 @@ module.exports= function (opts,cb)
                 return p;
             };
 
-            table.save= function (_obj)
+            table.save= function (obj)
             {
-                var obj= _deepclone(_obj), 
-                    gops= {},
+                var gops= {},
                     ops= gops[table._dynamo.TableName]= [];
 
                 var _hashrange= function (obj)
@@ -158,6 +157,7 @@ module.exports= function (opts,cb)
                     _save= function (obj)
                     {
                        var _keys= _.keys(obj),
+                           _omit= ['$old'],
                            diffs= diff(obj.$old || {},_.omit(obj,'$old'));
 
                        if ((obj.$id&&_keys.length==1)||!diffs) return;
@@ -192,22 +192,22 @@ module.exports= function (opts,cb)
                                           _save(val);
                                        });
 
-                                       delete obj[key];
+                                       _omit.push(key);
                                    }
                                }
                                else
                                {
                                    _save(desc);
                                    obj['$$'+key]= desc.$id;
-                                   delete obj[key];
+                                   _omit.push(key);
                                }
                             } 
                             else
                             if (type=='string'&&!obj[key])
-                              delete obj[key];
+                              _omit.push(key);
                        });
 
-                       ops.push({ op: 'put', item: obj });
+                       ops.push({ op: 'put', item: obj, omit: _omit });
                     },
                     _mput= function (gops,done)
                     {
@@ -236,8 +236,14 @@ module.exports= function (opts,cb)
                              }
 
                              if (op.op=='put')
-                                 tab.put(_.omit(obj,['$old']),
-                                  done,
+                                 tab.put(_.omit(obj,op.omit),
+                                  function ()
+                                  {
+                                     if (obj.$old)
+                                       obj.$old= _deepclone(_.omit(obj,'$old'));
+
+                                     done();
+                                  },
                                   { expected: obj.$old ? { $version: obj.$old.$version } : undefined })
                                   .error(done);
                              else
@@ -275,13 +281,7 @@ module.exports= function (opts,cb)
                           p.trigger.error(err);
                       }
                       else
-                      {
-                        table.findOne({ $id: _obj.$id, $pos: _obj.$pos }).result(function (item)
-                        {
-                            _.extend(_obj,item);
-                            p.trigger.success();
-                        });
-                      }
+                          p.trigger.success();
                   });
                 else
                     process.nextTick(p.trigger.success);
