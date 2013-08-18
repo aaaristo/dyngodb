@@ -3,6 +3,7 @@
 var dyngo= require('./index'),
     async= require('async'),
     fs= require('fs'),
+    util= require('util'),
     readline= require('readline'),
     _= require('underscore'),
     path= require('path').join,
@@ -74,10 +75,14 @@ dyngo(function (err,db)
                     ask();
                  };
              },
-             _print= function (obj)
+             _print= function (obj,cb)
              {
                  last= obj;
-                 console.log(JSON.stringify(db.cleanup(obj),null,2));
+                 db.cleanup(obj).clean(function (obj)
+                 {
+                    console.log(util.inspect(obj,{ depth: null }));
+                    cb();
+                 });
              };
 
          rl.question('> ', function (answer) 
@@ -123,16 +128,19 @@ dyngo(function (err,db)
                if (promise.count)
                  promise.count(_ask(function (count) { console.log(count); elapsed(); }));
                
+               if (promise.clean)
+                 promise.clean(function (obj) {  console.log(util.inspect(obj,{ depth: null })); ask(); });
+               else
                if (promise.result)
-                 promise.result(_ask(function (obj) { _print(obj); elapsed(); }));
+                 promise.result(function (obj) { _print(obj,function () { elapsed(); ask(); }); });
                else
                if (promise.results)
-                 promise.results(_ask(function (items) { _print(items); elapsed(); }));
+                 promise.results(function (items) { _print(items,function () { elapsed(); ask(); }); });
                else
                if (promise.success)
                  promise.success(_ask(function () { console.log('done!'.green); elapsed(); }));
                else
-                 _ask(function () { console.log(promise); })();
+                 _ask(function () { console.log(util.inspect(promise,{ depth: null })); })();
             }
             catch (ex)
             {

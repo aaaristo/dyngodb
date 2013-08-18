@@ -8,6 +8,7 @@ var _parser= require('./lib/parser'),
     _finder= require('./lib/finder'),
     _refiner= require('./lib/refiner'),
     _index= require('./lib/indexer');
+    _deep= require('./lib/deep');
 
 const _traverse= function (o, fn)
       {
@@ -17,10 +18,6 @@ const _traverse= function (o, fn)
              if (typeof (o[i])=='object')
                _traverse(o[i],fn);
          });
-      },
-      _deepclone= function (obj)
-      {
-         return JSON.parse(JSON.stringify(obj));
       };
 
 module.exports= function (opts,cb)
@@ -41,14 +38,21 @@ module.exports= function (opts,cb)
 
    db.cleanup= function (obj)
    {
-      var clone= _deepclone(obj);
-      _traverse(clone, function (key, value, clone)
+      var p= dyn.promise('clean');
+
+      _deep.clone(obj,function (clone)
       {
-         if (key.indexOf('$')==0&&key!='$id')
-           delete clone[key]; 
+          _deep.traverse(clone,
+          function (key, value, obj)
+          {
+             if (key.indexOf('$')==0&&key!='$id')
+               delete obj[key]; 
+          });
+
+          p.trigger.clean(clone);
       });
 
-      return clone;
+      return p;
    };
 
 
@@ -160,7 +164,7 @@ module.exports= function (opts,cb)
                            _omit= ['$old'],
                            diffs= diff(obj.$old || {},_.omit(obj,'$old'));
 
-                       if ((obj.$id&&_keys.length==1)||!diffs) return;
+                       if ((obj.$id&&_keys.length==1)||!diffs||obj.$old.$version<obj.$version) return;
 
                        _hashrange(obj);
                        _index(obj);
@@ -239,10 +243,11 @@ module.exports= function (opts,cb)
                                  tab.put(_.omit(obj,op.omit),
                                   function ()
                                   {
-                                     if (obj.$old)
-                                       obj.$old= _deepclone(_.omit(obj,'$old'));
-
-                                     done();
+                                     _deep.clone(_.omit(obj,'$old'),function (clone)
+                                     {
+                                         obj.$old= clone;
+                                         done();
+                                     });
                                   },
                                   { expected: obj.$old ? { $version: obj.$old.$version } : undefined })
                                   .error(done);
