@@ -154,7 +154,7 @@ module.exports= function (opts,cb)
                             _.keys(iops).forEach(function (table)
                             {
                                var tops= gops[table]= gops[table] || []; 
-                               tops.push.apply(tops,iops[table]);
+                               tops.push.apply(tops,_.collect(iops[table],function (op) { op.index= true; return op; }));
                             });
                          });
                     },
@@ -225,22 +225,14 @@ module.exports= function (opts,cb)
                           function (op,done)
                           {
                              var tab= dyn.table(_table),
-                                 schema= db[_table]._dynamo,
-                                 hashSchema= _.findWhere(schema.KeySchema,{ KeyType: 'HASH' }),
                                  obj= op.item;
                                
-                             if (hashSchema.AttributeName=='$hash')
+                             if (op.index)
                                tab.hash('$hash',obj.$hash)
                                   .range('$range',obj.$range);
                              else
-                             if (hashSchema.AttributeName=='$id')
                                tab.hash('$id',obj.$id)
                                   .range('$pos',obj.$pos);
-                             else
-                             {
-                                done(new Error('unknown record type'));
-                                return;
-                             }
 
                              if (op.op=='put')
                                  tab.put(_.omit(obj,op.omit),
