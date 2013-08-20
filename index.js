@@ -224,16 +224,18 @@ module.exports= function (opts,cb)
                           async.forEach(tops,
                           function (op,done)
                           {
-                             var tab= dyn.table(table._dynamo.TableName),
+                             var tab= dyn.table(_table),
+                                 schema= db[_table]._dynamo,
+                                 hashSchema= _.findWhere(schema.KeySchema,{ KeyType: 'HASH' }),
                                  obj= op.item;
                                
-                             if (obj.$id!==undefined)
-                               tab.hash('$id',obj.$id)
-                                  .range('$pos',obj.$pos);
-                             else
-                             if (obj.$hash!==undefined)
+                             if (hashSchema.AttributeName=='$hash')
                                tab.hash('$hash',obj.$hash)
                                   .range('$range',obj.$range);
+                             else
+                             if (hashSchema.AttributeName=='$id')
+                               tab.hash('$id',obj.$id)
+                                  .range('$pos',obj.$pos);
                              else
                              {
                                 done(new Error('unknown record type'));
