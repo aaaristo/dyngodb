@@ -34,7 +34,11 @@ module.exports= function (opts,cb)
    var dyn= dyno(opts.dynamo),
        finder= _finder(dyn),
        parser= _parser(dyn),
-       db= {};
+       db= {},
+       _alias= function (table)
+       {
+          return (opts.tables || {} )[table] || table;
+       };
 
    db.cleanup= function (obj)
    {
@@ -62,7 +66,7 @@ module.exports= function (opts,cb)
             {
                 var p, modifiers= {};
 
-                p= dyn.promise(['results','count'],'notfound');
+                p= dyn.promise(['results','count']);
 
                 process.nextTick(function ()
                 {
@@ -127,7 +131,10 @@ module.exports= function (opts,cb)
 
                 table.find.apply(table,args).limit(1).results(function (items)
                 {
-                     p.trigger.result(items[0]); 
+                     if (items.length==0)
+                       p.trigger.notfound();
+                     else
+                       p.trigger.result(items[0]); 
                 })
                 .error(p.trigger.error);
 
@@ -389,32 +396,49 @@ module.exports= function (opts,cb)
             table.drop= function ()
             {
                 var p= dyn.promise(),
-                    _alias= function (name)
-                    {
-                        var alias= name;
-
-                        if (opts.tables)
-                        _.keys(opts.tables).every(function (alias)
-                        {
-                              if (opts.tables[alias]==name)
-                              {
-                                alias= opts.tables[alias];
-                                return false;
-                              }
-                        });
-                        
-                        return alias;
-                    };
-
-                dyn.deleteTable(table._dynamo.TableName,function (err)
-                {
-                    if (err)
-                      p.trigger.error(err);
-                    else
+                    _success= function ()
                     {
                       delete db[_alias(table._dynamo.TableName)];
                       p.trigger.success();
-                    }
+                    },
+                    _check= function ()
+                    {
+                          dyn.describeTable(table._dynamo.TableName,
+                          function (err,data)
+                          {
+                              if (err)
+                              {
+                                  if (err.code=='ResourceNotFoundException')
+                                    _success();
+                                  else
+                                    p.trigger.error(err);
+                              }
+                              else
+                                setTimeout(_check,5000);
+                          });
+                    };
+        
+                async.forEach(table.indexes,
+                function (index,done)
+                {
+                    index.drop(done);
+                },
+                function (err)
+                {
+                    console.log('This may take a while...'.yellow);
+
+                    dyn.deleteTable(table._dynamo.TableName,function (err)
+                    {
+                        if (err)
+                        {
+                           if (err.code=='ResourceNotFoundException')
+                             _success();
+                           else
+                             p.trigger.error(err);
+                        }
+                        else
+                           setTimeout(_check,5000);
+                    });
                 });
 
                 return p;
@@ -476,6 +500,8 @@ module.exports= function (opts,cb)
 
               });
           };
+
+        console.log('This may take a while...'.yellow);
 
         dyn.table(name)
            .hash('$id','S')
