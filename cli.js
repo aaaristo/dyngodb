@@ -19,9 +19,16 @@ const getUserHome= function()
       {
           var historyFile= path(getUserHome(),'.dyngodb_history');
 
-          if (fs.existsSync(historyFile))
-            _history.push
-            .apply(_history,JSON.parse(fs.readFileSync(historyFile,'utf8')));
+          try
+          {
+
+              if (fs.existsSync(historyFile))
+                _history.push
+                .apply(_history,JSON.parse(fs.readFileSync(historyFile,'utf8')));
+
+          }
+          catch(ex)
+          {}
 
           return _history;
       },
