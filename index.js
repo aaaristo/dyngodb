@@ -400,6 +400,62 @@ module.exports= function (opts,cb)
                 return p;
             };
 
+            table.modify= function (read,write)
+            {
+                var p= dyn.promise(),
+                    _check= function ()
+                    {
+                          dyn.describeTable(table._dynamo.TableName,
+                          function (err,data)
+                          {
+                              if (err)
+                                p.trigger.error(err);
+                              else
+                              if (data.Table.TableStatus=='UPDATING')
+                                setTimeout(_check,5000);
+                              else
+                              {
+                                table._dynamo= data.Table;
+                                p.trigger.success();
+                              }
+                          });
+                    };
+
+                if (!read||!write)
+                  process.nextTick(function ()
+                  { p.trigger.error(new Error('You should specify read and write ProvisionedThroughput')) });
+                else
+                    dyn.describeTable(table._dynamo.TableName,
+                    function (err,data)
+                    {
+                          if (err)
+                              p.trigger.error(err);
+                          else
+                          {
+                              var current= data.Table.ProvisionedThroughput;
+
+                              if (current.ReadCapacityUnits==read
+                                &&current.WriteCapacityUnits==write) 
+                                p.trigger.success();
+                              else
+                              {
+                                 console.log('This may take a while'.yellow);
+
+                                 dyn.updateTable(table._dynamo.TableName,read,write,
+                                 function (err,data)
+                                 {
+                                    if (err)
+                                      p.trigger.error(err);
+                                    else
+                                      setTimeout(_check,5000);
+                                 });
+                              }
+                          }
+                    });
+
+                return p;
+            };
+
             table.drop= function ()
             {
                 var p= dyn.promise(),
@@ -463,7 +519,13 @@ module.exports= function (opts,cb)
                           dyn.describeTable(table,function (err,data)
                           {
                               if (!err)
-                                db[tables[table]]= configureTable({ _dynamo: data.Table, indexes: [] });
+                              {
+                                var hash= _.findWhere(data.Table.KeySchema,{ KeyType: 'HASH' }),
+                                    range= _.findWhere(data.Table.KeySchema,{ KeyType: 'RANGE' });
+
+                                if (hash.AttributeName=='$id'&&range&&range.AttributeName=='$pos')
+                                  db[tables[table]]= configureTable({ _dynamo: data.Table, indexes: [] });
+                              }
 
                               done(err);
                           });
