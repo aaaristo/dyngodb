@@ -11,7 +11,24 @@ var dyngo= require('./index'),
 
 var _history= [];
       
-const getUserHome= function() 
+const _json= function (path,content)
+      {
+          try
+          {
+              if (!content)
+                return JSON.parse(fs.readFileSync(path,'utf8'));
+              else
+              {
+                fs.writeFileSync(path,JSON.stringify(content,null,2),'utf8')
+                return { success: function (fn) { process.nextTick(fn); } };
+              }
+          }
+          catch (ex)
+          {
+              console.log((ex+'').red);
+          }
+      }, 
+      getUserHome= function() 
       {
           return process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'];
       },
@@ -107,7 +124,7 @@ dyngo(function (err,db)
             try
             {
                var time= process.hrtime(),
-                   promise= eval('(function (db,last,_){ return '+answer+'; })')(db,last,_),
+                   promise= eval('(function (db,last,_,json){ return '+answer+'; })')(db,last,_,_json),
                    elapsed= function ()
                    {
                       var diff= process.hrtime(time),
@@ -116,7 +133,7 @@ dyngo(function (err,db)
                       console.log((secs+' secs').green);
                    };
 
-               if (promise==_||promise===false) 
+               if (promise==_||promise===false||promise===undefined) 
                {
                   _ask(function () { console.log(promise); })();
                   return;

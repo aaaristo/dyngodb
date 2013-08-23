@@ -141,145 +141,154 @@ module.exports= function (opts,cb)
                 return p;
             };
 
-            table.save= function (obj)
+            table.save= function (_obj)
             {
-                var gops= {},
-                    ops= gops[table._dynamo.TableName]= [];
+                var objs= Array.isArray(_obj) ? _obj : [_obj],
+                    p= dyn.promise([],'updatedsinceread'), found= false;
 
-                var _hashrange= function (obj)
-                    {
-                        obj.$id= obj.$id || uuid();
-                        obj.$pos= obj.$pos || 0;
-                        obj.$version= (obj.$version || 0)+1;
-                    },
-                    _index= function (obj)
-                    {
-                         table.indexes.forEach(function (index)
-                         {
-                            var iops= index.update(obj) || {};
+                async.forEach(objs,
+                function (obj,done)
+                {
+                    var gops= {},
+                        ops= gops[table._dynamo.TableName]= [],
+                        _hashrange= function (obj)
+                        {
+                            obj.$id= obj.$id || uuid();
+                            obj.$pos= obj.$pos || 0;
+                            obj.$version= (obj.$version || 0)+1;
+                        },
+                        _index= function (obj)
+                        {
+                             table.indexes.forEach(function (index)
+                             {
+                                var iops= index.update(obj) || {};
 
-                            _.keys(iops).forEach(function (table)
-                            {
-                               var tops= gops[table]= gops[table] || []; 
-                               tops.push.apply(tops,_.collect(iops[table],function (op) { op.index= true; return op; }));
-                            });
-                         });
-                    },
-                    _save= function (obj)
-                    {
-                       var _keys= _.keys(obj),
-                           _omit= ['$old'],
-                           diffs= diff(obj.$old || {},_.omit(obj,'$old'));
+                                _.keys(iops).forEach(function (table)
+                                {
+                                   var tops= gops[table]= gops[table] || []; 
+                                   tops.push.apply(tops,_.collect(iops[table],function (op) { op.index= true; return op; }));
+                                });
+                             });
+                        },
+                        _save= function (obj)
+                        {
+                           var _keys= _.keys(obj),
+                               _omit= ['$old'],
+                               diffs= diff(obj.$old || {},_.omit(obj,'$old'));
 
-                       if ((obj.$id&&_keys.length==1)||!diffs
-                            ||(obj.$old || {$version: 0}).$version<obj.$version) return;
+                           if ((obj.$id&&_keys.length==1)||!diffs
+                                ||(obj.$old || {$version: 0}).$version<obj.$version) return;
 
-                       _hashrange(obj);
-                       _index(obj);
+                           _hashrange(obj);
+                           _index(obj);
 
-                       _keys.forEach(function (key)
-                       {
-                            var type= typeof obj[key];
+                           _keys.forEach(function (key)
+                           {
+                                var type= typeof obj[key];
 
-                            if (type=='object'&&key!='$old')
-                            {
-                               var desc= obj[key];
+                                if (type=='object'&&key!='$old')
+                                {
+                                   var desc= obj[key];
 
-                               if (Array.isArray(desc))
-                               {
-                                   if (desc.length&&typeof desc[0]=='object')
+                                   if (Array.isArray(desc))
                                    {
-                                       var $id= obj['$$$'+key]= obj['$$$'+key] || uuid();
-
-                                       desc.forEach(function (val, pos)
+                                       if (desc.length&&typeof desc[0]=='object')
                                        {
-                                          if (val.$id&&val.$id!=$id)
-                                          {
-                                             _save(val);
-                                             val.$ref= val.$id;
-                                          }
+                                           var $id= obj['$$$'+key]= obj['$$$'+key] || uuid();
 
-                                          val.$id= $id;
-                                          val.$pos= pos;
-                                          _save(val);
-                                       });
+                                           desc.forEach(function (val, pos)
+                                           {
+                                              if (val.$id&&val.$id!=$id)
+                                              {
+                                                 _save(val);
+                                                 val.$ref= val.$id;
+                                              }
 
+                                              val.$id= $id;
+                                              val.$pos= pos;
+                                              _save(val);
+                                           });
+
+                                           _omit.push(key);
+                                       }
+                                   }
+                                   else
+                                   {
+                                       _save(desc);
+                                       obj['$$'+key]= desc.$id;
                                        _omit.push(key);
                                    }
-                               }
-                               else
-                               {
-                                   _save(desc);
-                                   obj['$$'+key]= desc.$id;
-                                   _omit.push(key);
-                               }
-                            } 
-                            else
-                            if (type=='string'&&!obj[key])
-                              _omit.push(key);
-                       });
+                                } 
+                                else
+                                if (type=='string'&&!obj[key])
+                                  _omit.push(key);
+                           });
 
-                       ops.push({ op: 'put', item: obj, omit: _omit });
-                    },
-                    _mput= function (gops,done)
+                           ops.push({ op: 'put', item: obj, omit: _omit });
+                        },
+                        _mput= function (gops,done)
+                        {
+                           async.forEach(_.keys(gops),
+                           function (_table,done)
+                           {
+                              var tops= gops[_table];
+
+                              async.forEach(tops,
+                              function (op,done)
+                              {
+                                 var tab= dyn.table(_table),
+                                     obj= op.item;
+                                   
+                                 if (op.index)
+                                   tab.hash('$hash',obj.$hash)
+                                      .range('$range',obj.$range);
+                                 else
+                                   tab.hash('$id',obj.$id)
+                                      .range('$pos',obj.$pos);
+
+                                 if (op.op=='put')
+                                     tab.put(_.omit(obj,op.omit),
+                                      function ()
+                                      {
+                                         _deep.clone(_.omit(obj,'$old'),function (clone)
+                                         {
+                                             obj.$old= clone;
+                                             done();
+                                         });
+                                      },
+                                      { expected: obj.$old ? { $version: obj.$old.$version } : undefined })
+                                      .error(done);
+                                 else
+                                 if (op.op=='del')
+                                     tab.delete(done)
+                                     .error(done);
+                                 else
+                                   done(new Error('unknown update type:'+op.op));
+                              },
+                              done);
+                           },
+                           done);
+                        };
+
+
+                    _save(obj);
+
+                    _.keys(gops).forEach(function (table)
                     {
-                       async.forEach(_.keys(gops),
-                       function (_table,done)
-                       {
-                          var tops= gops[_table];
+                        if (gops[table].length==0)
+                          delete gops[table];
+                        else
+                          found= true;
+                    });
 
-                          async.forEach(tops,
-                          function (op,done)
-                          {
-                             var tab= dyn.table(_table),
-                                 obj= op.item;
-                               
-                             if (op.index)
-                               tab.hash('$hash',obj.$hash)
-                                  .range('$range',obj.$range);
-                             else
-                               tab.hash('$id',obj.$id)
-                                  .range('$pos',obj.$pos);
-
-                             if (op.op=='put')
-                                 tab.put(_.omit(obj,op.omit),
-                                  function ()
-                                  {
-                                     _deep.clone(_.omit(obj,'$old'),function (clone)
-                                     {
-                                         obj.$old= clone;
-                                         done();
-                                     });
-                                  },
-                                  { expected: obj.$old ? { $version: obj.$old.$version } : undefined })
-                                  .error(done);
-                             else
-                             if (op.op=='del')
-                                 tab.delete(done)
-                                 .error(done);
-                             else
-                               done(new Error('unknown update type:'+op.op));
-                          },
-                          done);
-                       },
-                       done);
-                    };
-
-                var p= dyn.promise([],'updatedsinceread'), found= false;
-
-                _save(obj);
-
-                _.keys(gops).forEach(function (table)
-                {
-                    if (gops[table].length==0)
-                      delete gops[table];
+                    if (found)
+                      _mput(gops,done);
                     else
-                      found= true;
-                });
+                        process.nextTick(done);
 
-                if (found)
-                  _mput(gops,function (err)
-                  {
+                },
+                function (err)
+                {
                       if (err)
                       {
                         if (err.code='notfound')
@@ -289,9 +298,7 @@ module.exports= function (opts,cb)
                       }
                       else
                           p.trigger.success();
-                  });
-                else
-                    process.nextTick(p.trigger.success);
+                });
 
                 return p;
             };
