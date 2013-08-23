@@ -77,14 +77,8 @@ module.exports= function (opts,cb)
                    {
                        refiner= _refiner(dyn,query),
                        cursor= finder.find(query);
-
-                       if (query.count)
-                          cursor.chain(p);
-                       else
-                       {
-                           cursor.chain(refiner);
-                           refiner.chain(p);
-                       }
+                       cursor.chain(refiner);
+                       refiner.chain(p);
                    })
                    .error(p.trigger.error);
 
