@@ -107,7 +107,7 @@ dyngo(function (err,db)
             try
             {
                var time= process.hrtime(),
-                   promise= eval('(function (db,last){ return '+answer+'; })')(db,last),
+                   promise= eval('(function (db,last,_){ return '+answer+'; })')(db,last,_),
                    elapsed= function ()
                    {
                       var diff= process.hrtime(time),
@@ -115,6 +115,12 @@ dyngo(function (err,db)
 
                       console.log((secs+' secs').green);
                    };
+
+               if (promise==_||promise===false) 
+               {
+                  _ask(function () { console.log(promise); })();
+                  return;
+               }
 
                promise= promise || {};
 
