@@ -120,6 +120,13 @@ dyngo(function (err,db)
                ask();
                return;
             }
+            else
+            if (answer=='clear')
+            {
+               process.stdout.write('\u001B[2J\u001B[0;0f');
+               ask();
+               return;
+            }
 
             try
             {
