@@ -1,8 +1,14 @@
 dyngodb
 =======
 
-An experiment to get a [MongoDB](http://www.mongodb.org/) like interface in front of [DynamoDB](http://aws.amazon.com/dynamodb/)
-and [CloudSearch](http://aws.amazon.com/cloudsearch/)
+An experiment to get a [MongoDB](http://www.mongodb.org/) *like* interface in front of [DynamoDB](http://aws.amazon.com/dynamodb/)
+and [CloudSearch](http://aws.amazon.com/cloudsearch/).
+
+## Why?
+
+DynamoDB is *elastic*, *cheap* and greatly integrated with many AWS products (e.g. [Elastic MapReduce](http://aws.amazon.com/elasticmapreduce/),
+[Redshift](http://aws.amazon.com/redshift/),[Data Pipeline](http://aws.amazon.com/datapipeline/),[S3](http://aws.amazon.com/s3/)),
+while MongoDB has a wonderful interface.
 
 ## Getting started
 Playing around:
@@ -42,7 +48,7 @@ $ dyngodb
 
 FIRST
 
-* support MongoDB query language
+* support a MongoDB *like* query language
 
 * support slice and dice, Amazon EMR and be friendly to tools that integrates with DynamoDB
   (so no compression of JSON objects for storage)
@@ -91,7 +97,7 @@ THEN
 
 * Basic update() support: $set, $unset (should add $push and $pull)
 
-* Basic lost update prevention:
+* Basic lost update prevention
 
 ### Finders
 
