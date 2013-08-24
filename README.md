@@ -221,7 +221,7 @@ because Session 1 already incremented it.
 
 Actually dyngodb is pretty incoherent about arrays, infact it has two kinds of array persistence: 
 
-* DynamoDB supports sets which are basically javascript _unordered_ arrays of strings or numbers or bynary,
+* DynamoDB supports sets which are basically javascript _unordered_ arrays of strings or numbers or binary data,
   so if dyngodb detects an array of one of those types it persists it like a set (hence loosing its order):
 
   <pre>
