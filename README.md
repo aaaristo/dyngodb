@@ -8,7 +8,9 @@ and [CloudSearch](http://aws.amazon.com/cloudsearch/).
 
 DynamoDB is *elastic*, *cheap* and greatly integrated with many AWS products (e.g. [Elastic MapReduce](http://aws.amazon.com/elasticmapreduce/),
 [Redshift](http://aws.amazon.com/redshift/),[Data Pipeline](http://aws.amazon.com/datapipeline/),[S3](http://aws.amazon.com/s3/)),
-while MongoDB has a wonderful interface.
+while MongoDB has a wonderful interface. Using node.js on [Elastic Beanstalk](http://aws.amazon.com/elasticbeanstalk/)
+and DynamoDB as your backend you could end-up with a very scalable, cheap and high available webapp architecture.
+The main stop on it for many developers would be being able to productively use DynamoDB, hence this project.
 
 ## Getting started
 Playing around:
