@@ -152,7 +152,7 @@ There are actually 2 indexes (4 but only 2 are used):
     db.test.find().sort({ name: -1 })
   </pre>
 
-  and will be used partially (filter on type only) for this queres:
+  and will be used partially (filter on type only) for this query:
   <pre>
     db.test.find({ type: 'person', name: 'Jane' })
   </pre>
@@ -248,7 +248,6 @@ Actually dyngodb is pretty incoherent about arrays, infact it has two kinds of a
   3. { $id: 'uuid2', $pos: 1, name: 'Sam' }
   4. { $id: 'uuid2', $pos: 2, name: 'Jill' }
   </pre>
-
   Finding John would get you this structure:
   
   <pre>
