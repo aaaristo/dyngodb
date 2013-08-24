@@ -249,6 +249,105 @@ Actually dyngodb is pretty incoherent about arrays, infact it has two kinds of a
   4. { $id: 'uuid2', $pos: 2, name: 'Jill' }
   </pre>
 
+  Finding John would get you this structure:
+  
+  <pre>
+    db.test.find({ name: 'John' })
+    
+    { 
+      $id: 'uuid1',
+      $pos: 0,
+      name: 'John',
+      $$$sons: 'uuid2',
+      sons: [
+               {
+                  $id: 'uuid2',
+                  $pos: 0,
+                  name: 'Konrad'
+               },
+               {
+                  $id: 'uuid2',
+                  $pos: 1,
+                  name: 'Sam'
+               },
+               {
+                  $id: 'uuid2',
+                  $pos: 2,
+                  name: 'Jill'
+               }
+            ]
+    }
+  </pre>
+  
+
+  This means that the array is strored within a single hash, with elements at different ranges,
+  which may be convinient to retrieve those objects if they live toghether with the parent object,
+  or as a list. Which is probably not true for sons...
+  So for the case where you "link" other objects inside the array, like:
+  
+  <pre>
+    konrad= { name: 'Konrad' };
+    sam= { name: 'Sam' };
+    jill= { name: 'Jill' };
+    db.test.save(konrad)
+    db.test.save(sam)
+    db.test.save(jill)
+    db.test.save({ name: 'John', sons: [konrad,sam,jill,{ name: 'Edward' }] })
+  </pre>
+  
+  here konrad, sam and jill are "standalone" objects with their hashes, that will be linked to the array,
+  while Edward will be contained in it. So in this case things are store like this:
+  
+  <pre>
+  1. { $id: 'konrad-uuid', $pos: 0, name: 'Konrad' }
+  2. { $id: 'sam-uuid', $pos: 0, name: 'Sam' }
+  3. { $id: 'jill-uuid', $pos: 0, name: 'Jill' }
+  4. { $id: 'uuid1', $pos: 0, name: 'John', $$$sons: 'uuid2' }
+  5. { $id: 'uuid1', $pos: 0, name: 'John', $$$sons: 'uuid2' }
+  6. { $id: 'uuid1', $pos: 0, name: 'John', $$$sons: 'uuid2' }
+  7. { $id: 'uuid2', $pos: 0, $ref: 'konrad-uuid' }
+  8. { $id: 'uuid2', $pos: 1, $ref: 'sam-uuid' }
+  9. { $id: 'uuid2', $pos: 2, $ref: 'jill-uuid' }
+  10. { $id: 'uuid2', $pos: 3, name: 'Edward' }
+  </pre>
+
+  Now you see the $ref here and you probably understand what is going on. Dyngo stores array placeholders
+  for objects that *lives* in other hashes. Obviously, finding John you will get the right structure:
+  
+  <pre>
+    db.test.find({ name: 'John' })
+    
+    { 
+      $id: 'uuid1',
+      $pos: 0,
+      name: 'John',
+      $$$sons: 'uuid2',
+      sons: [
+               {
+                  $id: 'konrad-uuid',
+                  $pos: 0, // dereferenced from $ref so you get the standalone object with 0 $pos
+                  name: 'Konrad'
+               },
+               {
+                  $id: 'sam-uuid',
+                  $pos: 0,
+                  name: 'Sam'
+               },
+               {
+                  $id: 'jill-uuid',
+                  $pos: 0,
+                  name: 'Jill'
+               },
+               {
+                  $id: 'uuid2',
+                  $pos: 3,
+                  name: 'Jill'
+               }
+            ]
+    }
+  </pre>
+
+
 * Arrays of arrays or other type of: they don't work. actually never tested it.
 
   <pre>
