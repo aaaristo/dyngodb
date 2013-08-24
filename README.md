@@ -1,7 +1,7 @@
 dyngodb
 =======
 
-An experiment to get a [MongoDB](http://www.mongodb.org/) *like* interface in front of [DynamoDB](http://aws.amazon.com/dynamodb/)
+An **experiment** to get a [MongoDB](http://www.mongodb.org/) *like* interface in front of [DynamoDB](http://aws.amazon.com/dynamodb/)
 and [CloudSearch](http://aws.amazon.com/cloudsearch/).
 
 ## Why?
