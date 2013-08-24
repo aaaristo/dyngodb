@@ -18,15 +18,182 @@ $ dyngodb
 > db.test.save({ name: 'John', lname: 'Smith' })
 > db.test.save({ name: 'Jane', lname: 'Burden' })
 > db.test.find({ name: 'John' })
-> last
-> last.city= 'London'
-> db.test.save(last)
+> john= last
+> john.city= 'London'
+> db.test.save(john)
 > db.test.find({ name: 'John' })
 > db.test.ensureIndex({ name: 'S' })
 > db.test.findOne({ name: 'John' })
-> db.prova.ensureIndex({ $search: { domain: 'mycstestdomain', lang: 'en' } }); /* some CloudSearch */
+> db.test.ensureIndex({ $search: { domain: 'mycstestdomain', lang: 'en' } }); /* some CloudSearch */
 > db.test.update({ name: 'John' },{ $set: { city: 'Boston' } });
-> db.prova.find({ $search: { q: 'Boston' } });
+> db.test.find({ $search: { q: 'Boston' } });
+> db.test.find({ name: 'Jane' }) /* some graphs */
+> jane= last
+> jane.houseband= john
+> john.wife= jane
+> john.himself= john
+> db.test.save(john);
+> db.test.save(jane);
 > db.test.remove()
 > db.test.drop()
 </pre>
+
+## Goals
+
+FIRST
+
+* support MongoDB query language
+
+* support slice and dice, Amazon EMR and be friendly to tools that integrates with DynamoDB
+  (so no compression of JSON objects for storage)
+
+* support graphs, and respect object identity
+
+* prevent lost-updates
+
+THEN
+
+* support transactions ([DynamoDB Transactions](https://github.com/awslabs/dynamodb-transactions))
+
+## What dyngodb actually does
+
+* Basic find() support (basic operators, no $all, $and $or..., some projection capabilities):
+  finds are implemented via 3 components: 
+      * parser: parses the query and produce a "query" object that is 
+                used to track the state of the query from its beginning to the end.
+
+      * finder: tries to retrive less-possible data from DynamoDB in the fastest way
+
+      * refiner: "completes" the query, doing all the operations that finder was not able
+                 to perform (for lack of support in DynamoDB or because i simply 
+                 haven't found a better way).
+
+* Basic save() support: DynamoDB does not support sub-documents. So the approach here is to
+  save sub-documents as documents of the table and link them to the parent object like this:
+
+
+       db.test.save({ name: 'John', wife: { name: 'Jane' } }) => 2 items inserted into the test table
+
+       1:      { $id: '50fb5b63-8061-4ccf-bbad-a77660101faa',
+                 name: 'John',
+                 $$wife: '028e84d0-31a9-4f4c-abb6-c6177d85a7ff' }
+
+       2:      { $id: '028e84d0-31a9-4f4c-abb6-c6177d85a7ff',
+                 name: 'Jane' }
+
+       where $id is the HASH of the DynamoDB table. This enables us to respect the javascript object 
+       identity as it was in memory, and you will get the same structure - even if it where a cyrcular graph -
+       (actually with some addons $id, $version...) when you query the data out:
+
+       db.test.find({ name: 'John' }) => will SCAN for name: 'John' return the first object, detects $$wife
+       ($$ for an object, $$$ for an array) and get (getItem) the second object. Those meta-attributes are keeped
+       in the result for later use in save().
+
+* Basic update() support: $set, $unset (should add $push and $pull)
+
+* Basic lost update prevention:
+
+### Finders
+
+There are 3 types of finders actually (used in this order):
+
+       * Simple: manage $id queries, so the ones where the user specify the HASH of the DynamoDB table
+
+       * Indexed: tries to find an index that is able to find hashes for that query
+
+       * Scan: fails back to [Scan](http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html)
+               the table :(, that you should try to avoid probably indexing fields,
+               or changing some design decision.
+
+### Indexing
+
+Indexes in dyngodb are DynamoDB tables that has a different KeySchema, and contains the data needed
+to lookup items based on some attributes. This means that typically an index will be used with a
+[Query](http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html) operation.
+
+There are actually 2 indexes (4 but only 2 are used):
+
+* [fat](http://dictionary.reference.com/browse/fat).js: as the name suggests it is a pretty heavy 
+  "general purpose" index that will generate many additional writes: 1 for every field indexed + 1.
+  Lets see an example:
+
+  Suppose to have a table like this:
+  { type: 'person', category: 'hipster', name: 'Jane', company: 'Acme' }
+  { type: 'person', category: 'hacker', name: 'Jack', city: 'Boston' }
+  { type: 'person', category: 'hustler', name: 'John', country: 'US' }
+  { type: 'company', category: 'enterprise', name: 'Amazon', phone: '13242343' }
+  { type: 'company', category: 'hipster', name: 'Plurimedia' }
+
+  And an index like:
+  db.test.ensureIndex({ type: 'S', category: 'S', name: 'S' });  
+
+  The index will be used in queries like:
+    db.test.find({ type: 'person' }).sort({ name: -1 })
+    db.test.find({ type: 'person', category: 'hipster' })
+
+  and will NOT be used in query like this
+    db.test.find({ name: 'Jane' })
+    db.test.find({ category: 'hipster', name: 'Jane' })
+    db.test.find().sort({ name: -1 })
+
+  and will be used partially (filter on type only) for this queres:
+    db.test.find({ type: 'person', name: 'Jane' })
+  
+  So columns are ordered in the index and you can only use it starting with the first
+  and attaching the others as you defined it in ensureIndex() with an EQ operator or
+  the query (finder) will use the index until the first non EQ operator and then the refiner
+  will filter/sort the rest.
+
+* cloud-search.js: is a fulltext index using AWS CloudSearch under the covers.
+
+  Suppose to have the same table as before.
+  And an index like:
+  db.test.ensureIndex({ $search: { domain: 'test', lang: 'en' } });  
+
+  You can then search the table like this:
+  db.test.find({ $search: { q: 'Acme' } });
+  db.test.find({ $search: { bq: "type:'contact'", q: 'John' } });
+
+
+* you could probably build your own specialized indexes too.. just copy the fat.js index and
+  add the new your.js index to the indexed.js finder at the top of indexes array.
+  (probably we should give this as a configuration option)
+
+
+### Lost update prevention
+
+Suppose to have two sessions going on
+
+Session 1 connects and read John
+<pre>
+$ dyngodb
+> db.test.find({ name: 'John' })
+</pre>
+
+Session 2 connects and read John
+<pre>
+$ dyngodb
+> db.test.find({ name: 'John' })
+</pre>
+
+Session 1 modifies and saves John
+<pre>
+> last.city= 'San Francisco'
+> db.test.save(last)
+done!
+</pre>
+
+Session 2 modifies and tries to save John and gets an error
+<pre>
+> last.country= 'France'
+> db.test.save(last)
+The item was changed since you read it
+</pre>
+
+This is accomplished by a $version attribute which is incremented
+at save time if changes are detected in the object since it was read
+($old attribute contains a clone of the item at read time).
+So when Session 2 tries to save the object it tries to save it
+[expecting](http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html#DDB-PutItem-request-Expected) the item to have $old.$version in the table and it fails
+because Session 1 already incremented it.
+
