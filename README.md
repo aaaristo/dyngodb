@@ -77,22 +77,22 @@ THEN
 * Basic save() support: DynamoDB does not support sub-documents. So the approach here is to
   save sub-documents as documents of the table and link them to the parent object like this:
 
-
-       db.test.save({ name: 'John', wife: { name: 'Jane' } }) => 2 items inserted into the test table
-
+       <pre>
+       db.test.save({ name: 'John', wife: { name: 'Jane' } }) 
+       => 2 items inserted into the test table
        1:      { $id: '50fb5b63-8061-4ccf-bbad-a77660101faa',
                  name: 'John',
                  $$wife: '028e84d0-31a9-4f4c-abb6-c6177d85a7ff' }
-
        2:      { $id: '028e84d0-31a9-4f4c-abb6-c6177d85a7ff',
                  name: 'Jane' }
-
+       </pre>
+       
        where $id is the HASH of the DynamoDB table. This enables us to respect the javascript object 
        identity as it was in memory, and you will get the same structure - even if it where a cyrcular graph -
        (actually with some addons $id, $version...) when you query the data out:
 
        db.test.find({ name: 'John' }) => will SCAN for name: 'John' return the first object, detects $$wife
-       ($$ for an object, $$$ for an array) and get (getItem) the second object. Those meta-attributes are keeped
+       ($$ for an object, $$$ for an [array](#arrays)) and get (getItem) the second object. Those meta-attributes are keeped
        in the result for later use in save().
 
 * Basic update() support: $set, $unset (should add $push and $pull)
@@ -103,13 +103,13 @@ THEN
 
 There are 3 types of finders actually (used in this order):
 
-       * Simple: manage $id queries, so the ones where the user specify the HASH of the DynamoDB table
+* Simple: manage $id queries, so the ones where the user specify the HASH of the DynamoDB table
 
-       * Indexed: tries to find an index that is able to find hashes for that query
+* Indexed: tries to find an index that is able to find hashes for that query
 
-       * Scan: fails back to [Scan](http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html)
-               the table :(, that you should try to avoid probably indexing fields,
-               or changing some design decision.
+* Scan: fails back to [Scan](http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html)
+  the table :(, that you should try to avoid probably indexing fields,
+  or changing some design decision.
 
 ### Indexing
 
@@ -217,3 +217,27 @@ So when Session 2 tries to save the object it tries to save it
 [expecting](http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html#DDB-PutItem-request-Expected) the item to have $old.$version in the table and it fails
 because Session 1 already incremented it.
 
+### Arrays
+
+Actually dyngodb is pretty incoherent about arrays, infact it has two kinds of array persistence: 
+
+* DynamoDB supports sets which are basically javascript _unordered_ arrays of strings or numbers or bynary,
+  so if dyngodb detects an array of one of those types it persists it like a set (hence loosing its order):
+
+  <pre>
+    db.test.save({ name: 'John', tags: ['developer','hipster','hacker','cool'] })
+  </pre>
+
+
+* Object arrays _are kept in order_: 
+
+  <pre>
+    db.test.save({ name: 'John', sons: [{ name: 'Konrad' },{ name: 'Sam' },{ name: 'Jill' }] })
+  </pre>
+
+* Arrays of arrays or other type of: they don't work. actually never tested it.
+
+  <pre>
+    db.test.save({ name: 'John', xxx: [[{},{}],[{}],[{}]] })
+    db.test.save({ name: 'John', xxx: [{},[{}],2] })
+  </pre>
