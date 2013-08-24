@@ -160,7 +160,9 @@ There are actually 2 indexes (4 but only 2 are used):
   So columns are ordered in the index and you can only use it starting with the first
   and attaching the others as you defined it in ensureIndex() with an EQ operator or
   the query (finder) will use the index until the first non EQ operator and then the refiner
-  will filter/sort the rest.
+  will filter/sort the rest. Local secondary indexes are created an all indexed attributes,
+  to support non-EQ operators, that means that actually you can index only 5 attributes with
+  this kind of index.
 
 * cloud-search.js: is a fulltext index using AWS CloudSearch under the covers.
 
