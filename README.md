@@ -124,26 +124,36 @@ There are actually 2 indexes (4 but only 2 are used):
   Lets see an example:
 
   Suppose to have a table like this:
+  <pre>
   { type: 'person', category: 'hipster', name: 'Jane', company: 'Acme' }
   { type: 'person', category: 'hacker', name: 'Jack', city: 'Boston' }
   { type: 'person', category: 'hustler', name: 'John', country: 'US' }
   { type: 'company', category: 'enterprise', name: 'Amazon', phone: '13242343' }
   { type: 'company', category: 'hipster', name: 'Plurimedia' }
-
+  </pre>
+  
   And an index like:
+  <pre>
   db.test.ensureIndex({ type: 'S', category: 'S', name: 'S' });  
-
+  </pre>
+  
   The index will be used in queries like:
+  <pre>
     db.test.find({ type: 'person' }).sort({ name: -1 })
     db.test.find({ type: 'person', category: 'hipster' })
-
+  </pre>
+  
   and will NOT be used in query like this
+  <pre>
     db.test.find({ name: 'Jane' })
     db.test.find({ category: 'hipster', name: 'Jane' })
     db.test.find().sort({ name: -1 })
+  </pre>
 
   and will be used partially (filter on type only) for this queres:
+  <pre>
     db.test.find({ type: 'person', name: 'Jane' })
+  </pre>
   
   So columns are ordered in the index and you can only use it starting with the first
   and attaching the others as you defined it in ensureIndex() with an EQ operator or
@@ -154,11 +164,15 @@ There are actually 2 indexes (4 but only 2 are used):
 
   Suppose to have the same table as before.
   And an index like:
+  <pre>
   db.test.ensureIndex({ $search: { domain: 'test', lang: 'en' } });  
+  </pre>
 
   You can then search the table like this:
+  <pre>
   db.test.find({ $search: { q: 'Acme' } });
   db.test.find({ $search: { bq: "type:'contact'", q: 'John' } });
+  </pre>
 
 
 * you could probably build your own specialized indexes too.. just copy the fat.js index and
