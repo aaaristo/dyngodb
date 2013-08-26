@@ -3,6 +3,7 @@
 var dyngo= require('./index'),
     async= require('async'),
     fs= require('fs'),
+    lazy= require('lazy'),
     util= require('util'),
     readline= require('readline'),
     _= require('underscore'),
@@ -28,6 +29,74 @@ const _json= function (path,content)
               console.log((ex+'').red);
           }
       }, 
+      _eval= function (cmd,db,last)
+      {
+        return eval('(function (db,last,_,json){ return '+cmd+'; })')(db,last,_,_json);
+      },
+      _dorc= function (db,cb)
+      {
+          var rcFile= path(getUserHome(),'.dyngorc'),
+              localRcFile= '.dyngorc',
+              last,
+              _file= function (f, done)
+              {
+                 var _lines= [];
+
+                 if (fs.existsSync(f))  
+                 {
+                    console.log(('executing '+f+'...').green);
+                    var rstream= fs.createReadStream(f);
+
+                    rstream.on('end',function ()
+                    {
+                        async.forEachSeries(_lines,
+                        function (cmd,done)
+                        {
+                           console.log(cmd);
+
+                           var promise= _eval(cmd,db,last);
+
+                           if (!promise.success)
+                             done(new Error('invalid rc command')); 
+                           else
+                             promise.success(function ()
+                             {
+                                 console.log('done!'.green);
+                                 done();
+                             });
+                    },
+                    done);
+                    });
+
+                    new lazy(rstream).lines.forEach(function (l) { _lines.push(l.toString('utf8')); });
+                 }
+                 else
+                    done();
+              };
+
+          _file(rcFile,function (err)
+          {
+              if (err)
+              {
+                 console.log(err.message.red,err.stack);
+                 process.exit(1);
+              }
+              else
+              if (localRcFile!=rcFile)
+                 _file(localRcFile,function (err)
+                 {
+                      if (err)
+                      {
+                         console.log(err.message.red,err.stack);
+                         process.exit(1);
+                      }
+                      else
+                         cb(); 
+                 });
+              else
+                 cb();
+          });
+      },
       getUserHome= function() 
       {
           return process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'];
@@ -88,105 +157,108 @@ dyngo(function (err,db)
    {
      rl.history= getHistory();
 
-     (function ask()
+     _dorc(db,function ()
      {
-         var _ask= function (fn)
-             {
-                 return function ()
-                 {
-                    var args= arguments;
-                    fn.apply(null,args); 
-                    ask();
-                 };
-             },
-             _print= function (obj,cb)
-             {
-                 last= obj;
-                 db.cleanup(obj).clean(function (obj)
-                 {
-                    console.log(util.inspect(obj,{ depth: null }));
-                    cb();
-                 });
-             };
-
-         rl.question('> ', function (answer) 
+         (function ask()
          {
+             var _ask= function (fn)
+                 {
+                     return function ()
+                     {
+                        var args= arguments;
+                        fn.apply(null,args); 
+                        ask();
+                     };
+                 },
+                 _print= function (obj,cb)
+                 {
+                     last= obj;
+                     db.cleanup(obj).clean(function (obj)
+                     {
+                        console.log(util.inspect(obj,{ depth: null }));
+                        cb();
+                     });
+                 };
 
-            if (!answer) { ask(); return; };
-            
-            if (answer.indexOf('show collections') > -1)
-            { 
-               _.filter(_.keys(db),function (key) { return !!db[key].find; }).forEach(function (c) { console.log(c); });
-               ask();
-               return;
-            }
-            else
-            if (answer=='clear')
-            {
-               process.stdout.write('\u001B[2J\u001B[0;0f');
-               ask();
-               return;
-            }
+             rl.question('> ', function (answer) 
+             {
 
-            try
-            {
-               var time= process.hrtime(),
-                   promise= eval('(function (db,last,_,json){ return '+answer+'; })')(db,last,_,_json),
-                   elapsed= function ()
+                if (!answer) { ask(); return; };
+                
+                if (answer.indexOf('show collections') > -1)
+                { 
+                   _.filter(_.keys(db),function (key) { return !!db[key].find; }).forEach(function (c) { console.log(c); });
+                   ask();
+                   return;
+                }
+                else
+                if (answer=='clear')
+                {
+                   process.stdout.write('\u001B[2J\u001B[0;0f');
+                   ask();
+                   return;
+                }
+
+                try
+                {
+                   var time= process.hrtime(),
+                       promise= _eval(answer,db,last),
+                       elapsed= function ()
+                       {
+                          var diff= process.hrtime(time),
+                              secs= (diff[0]*1e9+diff[1])/1e9;
+
+                          console.log((secs+' secs').green);
+                       };
+
+                   if (promise==_||promise===false||promise===undefined) 
                    {
-                      var diff= process.hrtime(time),
-                          secs= (diff[0]*1e9+diff[1])/1e9;
+                      _ask(function () { console.log(promise); })();
+                      return;
+                   }
 
-                      console.log((secs+' secs').green);
-                   };
+                   promise= promise || {};
 
-               if (promise==_||promise===false||promise===undefined) 
-               {
-                  _ask(function () { console.log(promise); })();
-                  return;
-               }
+                   if (promise.error)
+                     promise.error(_ask(function (err) 
+                     { 
+                         if (!err) return;
 
-               promise= promise || {};
+                         if (err.code=='notfound')
+                           console.log('no data found'.yellow);
+                         else
+                         if (err.code=='updatedsinceread')
+                           console.log('The item is changed since you read it'.red);
+                         else
+                           console.log((err+'').red,err.stack); 
+                     }));
 
-               if (promise.error)
-                 promise.error(_ask(function (err) 
-                 { 
-                     if (!err) return;
+                   if (promise.count)
+                     promise.count(_ask(function (count) { console.log(count); elapsed(); }));
+                   
+                   if (promise.clean)
+                     promise.clean(function (obj) {  console.log(util.inspect(obj,{ depth: null })); ask(); });
+                   else
+                   if (promise.result)
+                     promise.result(function (obj) { _print(obj,function () { elapsed(); ask(); }); });
+                   else
+                   if (promise.results)
+                     promise.results(function (items) { _print(items,function () { elapsed(); ask(); }); });
+                   else
+                   if (promise.success)
+                     promise.success(_ask(function () { console.log('done!'.green); elapsed(); }));
+                   else
+                     _ask(function () { console.log(util.inspect(promise,{ depth: null })); })();
+                }
+                catch (ex)
+                {
+                   console.log('unknown command'.red,ex,ex.stack);
+                   ask();
+                }
 
-                     if (err.code=='notfound')
-                       console.log('no data found'.yellow);
-                     else
-                     if (err.code=='updatedsinceread')
-                       console.log('The item is changed since you read it'.red);
-                     else
-                       console.log((err+'').red,err.stack); 
-                 }));
-
-               if (promise.count)
-                 promise.count(_ask(function (count) { console.log(count); elapsed(); }));
-               
-               if (promise.clean)
-                 promise.clean(function (obj) {  console.log(util.inspect(obj,{ depth: null })); ask(); });
-               else
-               if (promise.result)
-                 promise.result(function (obj) { _print(obj,function () { elapsed(); ask(); }); });
-               else
-               if (promise.results)
-                 promise.results(function (items) { _print(items,function () { elapsed(); ask(); }); });
-               else
-               if (promise.success)
-                 promise.success(_ask(function () { console.log('done!'.green); elapsed(); }));
-               else
-                 _ask(function () { console.log(util.inspect(promise,{ depth: null })); })();
-            }
-            catch (ex)
-            {
-               console.log('unknown command'.red,ex,ex.stack);
-               ask();
-            }
-
-            //rl.close();
-         });
-     })();
+                //rl.close();
+             });
+         })();
+     });
    }
 });
