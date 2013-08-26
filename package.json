@@ -21,14 +21,12 @@
     "deep-diff": "~0.1.3",
     "colors": "~0.6.1",
     "ret": "~0.1.6",
-    "querystring": "~0.2.0"
+    "querystring": "~0.2.0",
+    "lazy": "~1.0.11"
   },
   "repository": {
     "type": "git",
     "url": "http://github.com/aaaristo/dyngodb.git"
   },
-  "preferGlobal": true,
-  "devDependencies": {
-    "lazy": "~1.0.11"
-  }
+  "preferGlobal": true
 }
