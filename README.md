@@ -37,7 +37,7 @@ $ dyngodb
 > db.test.find({ $search: { q: 'Boston' } });
 > db.test.find({ name: 'Jane' }) /* some graphs */
 > jane= last
-> jane.houseband= john
+> jane.husband= john
 > john.wife= jane
 > john.himself= john
 > db.test.save(john);
