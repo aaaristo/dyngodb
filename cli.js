@@ -234,7 +234,7 @@ dyngo(function (err,db)
                      }));
 
                    if (promise.count)
-                     promise.count(_ask(function (count) { console.log(count); elapsed(); }));
+                     promise.count(_ask(function (count) { console.log(('\r'+count).green); elapsed(); }));
                    
                    if (promise.clean)
                      promise.clean(function (obj) {  console.log(util.inspect(obj,{ depth: null })); ask(); });
@@ -243,7 +243,19 @@ dyngo(function (err,db)
                      promise.result(function (obj) { _print(obj,function () { elapsed(); ask(); }); });
                    else
                    if (promise.results)
-                     promise.results(function (items) { _print(items,function () { elapsed(); ask(); }); });
+                   {
+                     var done= function () { elapsed(); ask(); },
+                         end= false;
+
+                     promise.results(function (items)
+                            { 
+                               _print(items,function () 
+                               { 
+                                    if (end) done(); 
+                               }); 
+                            })
+                            .end(function () { end= true; });
+                   }
                    else
                    if (promise.success)
                      promise.success(_ask(function () { console.log('done!'.green); elapsed(); }));

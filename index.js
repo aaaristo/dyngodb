@@ -66,7 +66,7 @@ module.exports= function (opts,cb)
             {
                 var p, modifiers= {};
 
-                p= dyn.promise(['results','count']);
+                p= dyn.promise(['results','count','end']);
 
                 process.nextTick(function ()
                 {
