@@ -96,6 +96,12 @@ module.exports= function (opts,cb)
                   return p;
                 };
 
+                p.window= function (n)
+                {
+                  modifiers.window= n; 
+                  return p;
+                };
+
                 p.skip= function (n)
                 {
                   modifiers.skip= n; 

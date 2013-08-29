@@ -206,13 +206,16 @@ dyngo(function (err,db)
                    var time= process.hrtime(),
                        promise= _eval(answer,db,last),
                        end,
+                       printed,
+                       chunks= 0,
                        _doneres= function () { elapsed(); ask(); },
-                       doneres= _doneres,
+                       doneres= _.wrap(_doneres,function (done) {  if (printed&&end) done(); }),
                        elapsed= function ()
                        {
                           var diff= process.hrtime(time),
                               secs= (diff[0]*1e9+diff[1])/1e9;
 
+                          console.log((chunks+' roundtrips').green);
                           console.log((secs+' secs').green);
                        };
 
@@ -251,20 +254,17 @@ dyngo(function (err,db)
                      promise.result(function (obj) { _print(obj,function () { elapsed(); ask(); }); });
                    else
                    if (promise.results)
-                   {
-                     doneres= NOPE
-
                      promise.results(function (items)
                      { 
+                           chunks++;
+                           printed= false;
+
                            _print(items,function () 
                            { 
-                                if (end)
-                                  _doneres(); 
-                                else
-                                  doneres= _doneres;
+                               printed= true;
+                               doneres(); 
                            }); 
                      });
-                   }
                    else
                    if (promise.success)
                      promise.success(_ask(function () { console.log('done!'.green); elapsed(); }));
