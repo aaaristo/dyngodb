@@ -433,7 +433,7 @@ module.exports= function (opts,cb)
                                 p.trigger.success();
                               else
                               {
-                                 console.log('This may take a while'.yellow);
+                                 console.log('This may take a while...'.yellow);
 
                                  dyn.updateTable(table._dynamo.TableName,read,write,
                                  function (err,data)

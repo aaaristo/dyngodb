@@ -1,5 +1,7 @@
 #!/usr/local/bin/node
 
+const NOPE= function (){};
+
 var dyngo= require('./index'),
     async= require('async'),
     fs= require('fs'),
@@ -203,6 +205,9 @@ dyngo(function (err,db)
                 {
                    var time= process.hrtime(),
                        promise= _eval(answer,db,last),
+                       end,
+                       _doneres= function () { elapsed(); ask(); },
+                       doneres= _doneres,
                        elapsed= function ()
                        {
                           var diff= process.hrtime(time),
@@ -233,9 +238,12 @@ dyngo(function (err,db)
                            console.log((err+'').red,err.stack); 
                      }));
 
+                   if (promise.end)
+                     promise.end(function () { end= true; doneres(); });
+
                    if (promise.count)
                      promise.count(_ask(function (count) { console.log(('\r'+count).green); elapsed(); }));
-                   
+                        
                    if (promise.clean)
                      promise.clean(function (obj) {  console.log(util.inspect(obj,{ depth: null })); ask(); });
                    else
@@ -244,17 +252,18 @@ dyngo(function (err,db)
                    else
                    if (promise.results)
                    {
-                     var done= function () { elapsed(); ask(); },
-                         end= false;
+                     doneres= NOPE
 
                      promise.results(function (items)
-                            { 
-                               _print(items,function () 
-                               { 
-                                    if (end) done(); 
-                               }); 
-                            })
-                            .end(function () { end= true; });
+                     { 
+                           _print(items,function () 
+                           { 
+                                if (end)
+                                  _doneres(); 
+                                else
+                                  doneres= _doneres;
+                           }); 
+                     });
                    }
                    else
                    if (promise.success)
