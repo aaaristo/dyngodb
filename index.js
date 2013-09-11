@@ -9,6 +9,7 @@ var _parser= require('./lib/parser'),
     _refiner= require('./lib/refiner'),
     _index= require('./lib/indexer');
     _deep= require('./lib/deep');
+    _steps= require('./lib/capacity');
 
 const _traverse= function (o, fn)
       {
@@ -403,7 +404,7 @@ module.exports= function (opts,cb)
             table.modify= function (read,write)
             {
                 var p= dyn.promise(),
-                    _check= function ()
+                    _check= function (cb)
                     {
                           dyn.describeTable(table._dynamo.TableName,
                           function (err,data)
@@ -412,11 +413,11 @@ module.exports= function (opts,cb)
                                 p.trigger.error(err);
                               else
                               if (data.Table.TableStatus=='UPDATING')
-                                setTimeout(_check,5000);
+                                setTimeout(_check,5000,cb);
                               else
                               {
                                 table._dynamo= data.Table;
-                                p.trigger.success();
+                                cb();
                               }
                           });
                     };
@@ -441,14 +442,35 @@ module.exports= function (opts,cb)
                               {
                                  console.log('This may take a while...'.yellow);
 
-                                 dyn.updateTable(table._dynamo.TableName,read,write,
-                                 function (err,data)
+                                 var steps= _steps(current.ReadCapacityUnits,
+                                                   read,
+                                                   current.WriteCapacityUnits,
+                                                   write);
+
+                                 async.forEachSeries(steps,function (step,done)
                                  {
-                                    if (err)
-                                      p.trigger.error(err);
-                                    else
-                                      setTimeout(_check,5000);
-                                 });
+                                     var sread= step[0], swrite= step[1];
+
+                                     dyn.updateTable(table._dynamo.TableName,sread,swrite,
+                                     function (err,data)
+                                     {
+                                        if (err)
+                                          done(err);
+                                        else
+                                          setTimeout(_check,5000,function ()
+                                          {
+                                             if (sread==read&&swrite==write)
+                                               console.log(('current capacity: '+sread+' read '+swrite+' write')
+                                               .green);
+                                             else
+                                               console.log(('current capacity: '+sread+' read '+swrite+' write')
+                                               .yellow);
+
+                                             done();
+                                          });
+                                     });
+                                 },
+                                 p.should('success'));
                               }
                           }
                     });

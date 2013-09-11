@@ -215,7 +215,7 @@ dyngo(function (err,db)
                           var diff= process.hrtime(time),
                               secs= (diff[0]*1e9+diff[1])/1e9;
 
-                          console.log((chunks+' roundtrips').green);
+                          if (chunks) console.log((chunks+' roundtrips').green);
                           console.log((secs+' secs').green);
                        };
 
