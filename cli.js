@@ -174,7 +174,6 @@ dyngo(function (err,db)
                  },
                  _print= function (obj,cb)
                  {
-                     last= obj;
                      db.cleanup(obj).clean(function (obj)
                      {
                         console.log(util.inspect(obj,{ depth: null }));
@@ -251,13 +250,20 @@ dyngo(function (err,db)
                      promise.clean(function (obj) {  console.log(util.inspect(obj,{ depth: null })); ask(); });
                    else
                    if (promise.result)
-                     promise.result(function (obj) { _print(obj,function () { elapsed(); ask(); }); });
+                   {
+                     last= undefined;
+                     promise.result(function (obj) { last= obj; _print(obj,function () { elapsed(); ask(); }); });
+                   }
                    else
-                   if (promise.results)
+                   if (promise.results) 
+                   {
+                     last= [];
                      promise.results(function (items)
                      { 
                            chunks++;
                            printed= false;
+
+                           last.push.apply(last,items);
 
                            _print(items,function () 
                            { 
@@ -265,6 +271,7 @@ dyngo(function (err,db)
                                doneres(); 
                            }); 
                      });
+                   }
                    else
                    if (promise.success)
                      promise.success(_ask(function () { console.log('done!'.green); elapsed(); }));
