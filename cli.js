@@ -10,7 +10,10 @@ var dyngo= require('./index'),
     readline= require('readline'),
     _= require('underscore'),
     path= require('path').join,
-    colors = require('colors');
+    colors = require('colors'),
+    AWS = require('aws-sdk');
+
+var argv = require('optimist').argv;
 
 var _history= [];
       
@@ -131,7 +134,7 @@ const _json= function (path,content)
 process.on('exit', saveHistory);
 process.on('SIGINT', function () { saveHistory(); process.exit(0); });
 
-dyngo(function (err,db)
+var args= [function (err,db)
 {
    var rl = readline.createInterface
    ({
@@ -289,4 +292,9 @@ dyngo(function (err,db)
          })();
      });
    }
-});
+}];
+
+if (argv.local)
+  args.unshift({ dynamo: { endpoint: new AWS.Endpoint('http://localhost:8000') } });
+
+dyngo.apply(null,args);

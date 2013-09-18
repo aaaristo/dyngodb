@@ -22,7 +22,8 @@
     "colors": "~0.6.1",
     "ret": "~0.1.6",
     "querystring": "~0.2.0",
-    "lazy": "~1.0.11"
+    "lazy": "~1.0.11",
+    "optimist": "~0.6.0"
   },
   "repository": {
     "type": "git",
