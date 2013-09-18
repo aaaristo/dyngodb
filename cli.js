@@ -294,7 +294,7 @@ var args= [function (err,db)
    }
 }];
 
-if (argv.local)
+if (argv.local) 
   args.unshift({ dynamo: { endpoint: new AWS.Endpoint('http://localhost:8000') } });
 
 dyngo.apply(null,args);
