@@ -202,6 +202,12 @@ var args= [function (err,db)
                    ask();
                    return;
                 }
+                else
+                if (answer=='exit')
+                {
+                   process.exit(0);
+                   return;
+                }
 
                 try
                 {
