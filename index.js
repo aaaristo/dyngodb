@@ -333,6 +333,7 @@ module.exports= function (opts,cb)
             table.remove= function ()
             {
                 var p= dyn.promise(),
+                    cursor= table.find.apply(table,arguments),
                     _deleteItem= function (obj,done)
                     {
                           async.parallel([
@@ -355,18 +356,17 @@ module.exports= function (opts,cb)
                           done);
                     };
 
-                table.find.apply(table,arguments).results(function (items)
+                cursor.results(function (items)
                 {
                     async.forEach(items,_deleteItem,
                     function (err)
                     {
                        if (err)
-                         p.trigger.error(err); 
-                       else
-                         p.trigger.success();
+                         cursor.trigger.error(err); 
                     });
                 })
-                .error(p.trigger.error);
+                .error(p.trigger.error)
+                .end(p.trigger.success);
 
                 return p;
             };
@@ -374,6 +374,7 @@ module.exports= function (opts,cb)
             table.update= function (query,update)
             {
                 var p= dyn.promise(),
+                    cursor= table.find(query),
                     _updateItem= function (item,done)
                     {
                        if (update.$set)
@@ -390,13 +391,19 @@ module.exports= function (opts,cb)
                     },
                     _updateItems= function (items)
                     {
-                       async.forEach(items,_updateItem,p.should('success')); 
+                       async.forEach(items,_updateItem,
+                       function (err)
+                       {
+                         if (err)
+                           cursor.trigger.error(err);
+                       }); 
                     };
 
 
-                table.find(query)
+                cursor
                      .results(_updateItems)
-                     .error(p.trigger.error);
+                     .error(p.trigger.error)
+                     .end(p.trigger.success);
 
                 return p;
             };
