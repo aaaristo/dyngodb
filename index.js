@@ -35,7 +35,7 @@ module.exports= function (opts,cb)
    var dyn= dyno(opts.dynamo),
        finder= _finder(dyn),
        parser= _parser(dyn),
-       db= {},
+       db= { _dyn: dyn },
        _alias= function (table)
        {
           return (opts.tables || {} )[table] || table;
@@ -473,7 +473,7 @@ module.exports= function (opts,cb)
                                 var hash= _.findWhere(data.Table.KeySchema,{ KeyType: 'HASH' }),
                                     range= _.findWhere(data.Table.KeySchema,{ KeyType: 'RANGE' });
 
-                                if (hash.AttributeName=='$id'&&range&&range.AttributeName=='$pos')
+                                if (hash.AttributeName&&hash.AttributeName=='$id'&&range&&range.AttributeName=='$pos')
                                   db[tables[table]]= configureTable({ _dynamo: data.Table, indexes: [] });
                               }
 
