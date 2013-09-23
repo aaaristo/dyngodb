@@ -366,3 +366,17 @@ In dyngodb you have 2 DynamoDB table KeySchema:
   $hash represents probably the container of the results for a certain operator. and $range is used to keep the key
   attributes of the results ($id+':'+$pos).
 
+### Local
+
+It is possible to use [DynamoDB Local](http://aws.typepad.com/aws/2013/09/dynamodb-local-for-desktop-development.html) by adding *--local* to the commandline:
+<pre>
+dyngodb --local
+</pre>
+
+### .dyngorc
+
+Using the *.dyngorc* file you can issue some commands before using the console (e.g. ensureIndex)
+
+### Help wanted!
+
+Your help is highly appreciated: we need to test / discuss / fix code, performance, roadmap
