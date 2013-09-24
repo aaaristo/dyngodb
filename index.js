@@ -191,6 +191,9 @@ module.exports= function (opts,cb)
                                 {
                                    var desc= obj[key];
 
+                                   if (desc==null)
+                                     delete obj[key];
+                                   else
                                    if (Array.isArray(desc))
                                    {
                                        if (desc.length&&typeof desc[0]=='object')
@@ -330,10 +333,10 @@ module.exports= function (opts,cb)
                   return p;
             };
 
-            table.remove= function ()
+            table.remove= function (filter)
             {
                 var p= dyn.promise(),
-                    cursor= table.find.apply(table,arguments),
+                    cursor= table.find(filter,{ $id: 1, $pos: 1 }),
                     _deleteItem= function (obj,done)
                     {
                           async.parallel([
