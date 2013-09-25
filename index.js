@@ -336,7 +336,7 @@ module.exports= function (opts,cb)
             table.remove= function (filter)
             {
                 var p= dyn.promise(),
-                    cursor= table.find(filter,{ $id: 1, $pos: 1 }),
+                    cursor= table.find(filter),
                     _deleteItem= function (obj,done)
                     {
                           async.parallel([
