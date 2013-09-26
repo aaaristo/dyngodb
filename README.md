@@ -25,7 +25,7 @@ $ dyngodb
 > db.createCollection('test')
 > db.test.save({ name: 'John', lname: 'Smith' })
 > db.test.save({ name: 'Jane', lname: 'Burden' })
-> db.test.find({ name: 'John' })
+> db.test.findOne({ name: 'John' })
 > john= last
 > john.city= 'London'
 > db.test.save(john)
