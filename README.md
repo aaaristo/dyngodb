@@ -377,6 +377,30 @@ dyngodb --local
 
 Using the *.dyngorc* file you can issue some commands before using the console (e.g. ensureIndex)
 
+### standard input
+
+*commands.txt*
+<pre>
+db.test.save([{ name: 'John' },{ name: 'Jane' })
+db.test.save([{ name: 'John' },{ name: 'Jane' })
+db.test.save([{ name: 'John' },{ name: 'Jane' })
+</pre>
+
+<pre>
+dyngodb < commands.txt
+</pre>
+
+### Streams (for raw dynamodb items)
+
+Example of moving items between tables with streams (10 by 10):
+<pre>
+dyngodb
+> t1= db._dyn.stream('table1')
+> t2= db._dyn.stream('table2')
+> t1.scan({ limit: 10 }).pipe(t2.mput('put')).on('finish',function () { console.log('done'); })
+</pre>
+
+
 ### Help wanted!
 
 Your help is highly appreciated: we need to test / discuss / fix code, performance, roadmap
