@@ -35,7 +35,7 @@ $ dyngodb
 > db.test.ensureIndex({ $search: { domain: 'mycstestdomain', lang: 'en' } }); /* some CloudSearch */
 > db.test.update({ name: 'John' },{ $set: { city: 'Boston' } });
 > db.test.find({ $search: { q: 'Boston' } });
-> db.test.find({ name: 'Jane' }) /* some graphs */
+> db.test.findOne({ name: 'Jane' }) /* some graphs */
 > jane= last
 > jane.husband= john
 > john.wife= jane
