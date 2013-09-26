@@ -387,7 +387,7 @@ db.test.save([{ name: 'John' },{ name: 'Jane' })
 </pre>
 
 <pre>
-dyngodb < commands.txt
+dyngodb &gt; commands.txt
 </pre>
 
 ### Streams (for raw dynamodb items)
