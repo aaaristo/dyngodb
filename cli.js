@@ -38,11 +38,57 @@ const _json= function (path,content)
       {
         return eval('(function (db,last,_,json){ return '+cmd+'; })')(db,last,_,_json);
       },
+      _dobatch= function (db,lines,done)
+      {
+         var last;
+
+         return function ()
+                {
+                        async.forEachSeries(lines,
+                        function (cmd,done)
+                        {
+                           console.log(cmd);
+
+                           var promise= _eval(cmd,db,last);
+
+                           if (!promise.success)
+                             done(); 
+                           else
+                             promise.success(function ()
+                             {
+                                 console.log('done!'.green);
+                                 done();
+                             });
+                        },done);
+                };
+      },
+      _doinput= function (db,cb)
+      {
+         var _lines= [];
+
+         process.stdin.on('end',_dobatch(db,_lines,
+         function (err)
+         {
+              if (err)
+              {
+                console.log(err.message.red,err.stack);
+                process.exit(1); 
+              }
+              else
+                process.exit(0); 
+         }));
+
+         new lazy(process.stdin).lines.forEach(function (l) { _lines.push(l.toString('utf8')); });
+
+         process.stdin.resume();
+
+         // if we have no input go to interactive mode
+         setTimeout(function () { if (_lines.length==0) cb(); },100);
+      },
       _dorc= function (db,cb)
       {
           var rcFile= path(getUserHome(),'.dyngorc'),
               localRcFile= '.dyngorc',
-              last,
               _file= function (f, done)
               {
                  var _lines= [];
@@ -52,26 +98,7 @@ const _json= function (path,content)
                     console.log(('executing '+f+'...').green);
                     var rstream= fs.createReadStream(f);
 
-                    rstream.on('end',function ()
-                    {
-                        async.forEachSeries(_lines,
-                        function (cmd,done)
-                        {
-                           console.log(cmd);
-
-                           var promise= _eval(cmd,db,last);
-
-                           if (!promise.success)
-                             done(new Error('invalid rc command')); 
-                           else
-                             promise.success(function ()
-                             {
-                                 console.log('done!'.green);
-                                 done();
-                             });
-                    },
-                    done);
-                    });
+                    rstream.on('end',_dobatch(db,_lines,done));
 
                     new lazy(rstream).lines.forEach(function (l) { _lines.push(l.toString('utf8')); });
                  }
@@ -133,169 +160,174 @@ const _json= function (path,content)
 
 process.on('exit', saveHistory);
 process.on('SIGINT', function () { saveHistory(); process.exit(0); });
+process.stdin.pause();
 
 var args= [function (err,db)
 {
-   var rl = readline.createInterface
-   ({
-      input: process.stdin,
-      output: process.stdout,
-      completer: function (linePartial, cb)
-      {
-          if (linePartial.indexOf('db.')==0)
-          {
-            var tables= _.collect(_.filter(_.keys(db),
-                                  function (key) { return key.indexOf(linePartial.replace('db.',''))==0; }),
-                        function (res) { return 'db.'+res; });
-            cb(null,[tables, linePartial]); 
-          }
-          else
-            cb(null,[[], linePartial]); 
-      }
-   });
-
    var last;
 
    if (err)
      console.log(err);
    else
    {
-     rl.history= getHistory();
 
      _dorc(db,function ()
      {
-         (function ask()
-         {
-             var _ask= function (fn)
-                 {
-                     return function ()
-                     {
-                        var args= arguments;
-                        fn.apply(null,args); 
-                        ask();
-                     };
-                 },
-                 _print= function (obj,cb)
-                 {
-                     db.cleanup(obj).clean(function (obj)
-                     {
-                        console.log(util.inspect(obj,{ depth: null }));
-                        cb();
-                     });
-                 };
+           _doinput(db,function()
+           {
+               var rl = readline.createInterface
+               ({
+                  input: process.stdin,
+                  output: process.stdout,
+                  completer: function (linePartial, cb)
+                  {
+                      if (linePartial.indexOf('db.')==0)
+                      {
+                        var tables= _.collect(_.filter(_.keys(db),
+                                              function (key) { return key.indexOf(linePartial.replace('db.',''))==0; }),
+                                    function (res) { return 'db.'+res; });
+                        cb(null,[tables, linePartial]); 
+                      }
+                      else
+                        cb(null,[[], linePartial]); 
+                  }
+               });
 
-             rl.question('> ', function (answer) 
+               rl.history= getHistory();
+
+             (function ask()
              {
+                 var _ask= function (fn)
+                     {
+                         return function ()
+                         {
+                            var args= arguments;
+                            fn.apply(null,args); 
+                            ask();
+                         };
+                     },
+                     _print= function (obj,cb)
+                     {
+                         db.cleanup(obj).clean(function (obj)
+                         {
+                            console.log(util.inspect(obj,{ depth: null }));
+                            cb();
+                         });
+                     };
 
-                if (!answer) { ask(); return; };
-                
-                if (answer.indexOf('show collections') > -1)
-                { 
-                   _.filter(_.keys(db),function (key) { return !!db[key].find; }).forEach(function (c) { console.log(c); });
-                   ask();
-                   return;
-                }
-                else
-                if (answer=='clear')
-                {
-                   process.stdout.write('\u001B[2J\u001B[0;0f');
-                   ask();
-                   return;
-                }
-                else
-                if (answer=='exit')
-                {
-                   process.exit(0);
-                   return;
-                }
+                 rl.question('> ', function (answer) 
+                 {
 
-                try
-                {
-                   var time= process.hrtime(),
-                       promise= _eval(answer,db,last),
-                       end,
-                       printed,
-                       chunks= 0,
-                       _doneres= function () { elapsed(); ask(); },
-                       doneres= _.wrap(_doneres,function (done) {  if (printed&&end) done(); }),
-                       elapsed= function ()
+                    if (!answer) { ask(); return; };
+                    
+                    if (answer.indexOf('show collections') > -1)
+                    { 
+                       _.filter(_.keys(db),function (key) { return !!db[key].find; }).forEach(function (c) { console.log(c); });
+                       ask();
+                       return;
+                    }
+                    else
+                    if (answer=='clear')
+                    {
+                       process.stdout.write('\u001B[2J\u001B[0;0f');
+                       ask();
+                       return;
+                    }
+                    else
+                    if (answer=='exit')
+                    {
+                       process.exit(0);
+                       return;
+                    }
+
+                    try
+                    {
+                       var time= process.hrtime(),
+                           promise= _eval(answer,db,last),
+                           end,
+                           printed,
+                           chunks= 0,
+                           _doneres= function () { elapsed(); ask(); },
+                           doneres= _.wrap(_doneres,function (done) {  if (printed&&end) done(); }),
+                           elapsed= function ()
+                           {
+                              var diff= process.hrtime(time),
+                                  secs= (diff[0]*1e9+diff[1])/1e9;
+
+                              if (chunks) console.log((chunks+' roundtrips').green);
+                              console.log((secs+' secs').green);
+                           };
+
+                       if (promise==_||promise===false||promise===undefined) 
                        {
-                          var diff= process.hrtime(time),
-                              secs= (diff[0]*1e9+diff[1])/1e9;
+                          _ask(function () { console.log(promise); })();
+                          return;
+                       }
 
-                          if (chunks) console.log((chunks+' roundtrips').green);
-                          console.log((secs+' secs').green);
-                       };
+                       promise= promise || {};
 
-                   if (promise==_||promise===false||promise===undefined) 
-                   {
-                      _ask(function () { console.log(promise); })();
-                      return;
-                   }
+                       if (promise.error)
+                         promise.error(_ask(function (err) 
+                         { 
+                             if (!err) return;
 
-                   promise= promise || {};
+                             if (err.code=='notfound')
+                               console.log('no data found'.yellow);
+                             else
+                             if (err.code=='updatedsinceread')
+                               console.log('The item is changed since you read it'.red);
+                             else
+                               console.log((err+'').red,err.stack); 
+                         }));
 
-                   if (promise.error)
-                     promise.error(_ask(function (err) 
-                     { 
-                         if (!err) return;
+                       if (promise.end)
+                         promise.end(function () { end= true; doneres(); });
 
-                         if (err.code=='notfound')
-                           console.log('no data found'.yellow);
-                         else
-                         if (err.code=='updatedsinceread')
-                           console.log('The item is changed since you read it'.red);
-                         else
-                           console.log((err+'').red,err.stack); 
-                     }));
+                       if (promise.count)
+                         promise.count(_ask(function (count) { console.log(('\r'+count).green); elapsed(); }));
+                            
+                       if (promise.clean)
+                         promise.clean(function (obj) {  console.log(util.inspect(obj,{ depth: null })); ask(); });
+                       else
+                       if (promise.result)
+                       {
+                         last= undefined;
+                         promise.result(function (obj) { last= obj; _print(obj,function () { elapsed(); ask(); }); });
+                       }
+                       else
+                       if (promise.results) 
+                       {
+                         last= [];
+                         promise.results(function (items)
+                         { 
+                               chunks++;
+                               printed= false;
 
-                   if (promise.end)
-                     promise.end(function () { end= true; doneres(); });
+                               last.push.apply(last,items);
 
-                   if (promise.count)
-                     promise.count(_ask(function (count) { console.log(('\r'+count).green); elapsed(); }));
-                        
-                   if (promise.clean)
-                     promise.clean(function (obj) {  console.log(util.inspect(obj,{ depth: null })); ask(); });
-                   else
-                   if (promise.result)
-                   {
-                     last= undefined;
-                     promise.result(function (obj) { last= obj; _print(obj,function () { elapsed(); ask(); }); });
-                   }
-                   else
-                   if (promise.results) 
-                   {
-                     last= [];
-                     promise.results(function (items)
-                     { 
-                           chunks++;
-                           printed= false;
+                               _print(items,function () 
+                               { 
+                                   printed= true;
+                                   doneres(); 
+                               }); 
+                         });
+                       }
+                       else
+                       if (promise.success)
+                         promise.success(_ask(function () { console.log('done!'.green); elapsed(); }));
+                       else
+                         _ask(function () { console.log(util.inspect(promise,{ depth: null })); })();
+                    }
+                    catch (ex)
+                    {
+                       console.log('unknown command'.red,ex,ex.stack);
+                       ask();
+                    }
 
-                           last.push.apply(last,items);
-
-                           _print(items,function () 
-                           { 
-                               printed= true;
-                               doneres(); 
-                           }); 
-                     });
-                   }
-                   else
-                   if (promise.success)
-                     promise.success(_ask(function () { console.log('done!'.green); elapsed(); }));
-                   else
-                     _ask(function () { console.log(util.inspect(promise,{ depth: null })); })();
-                }
-                catch (ex)
-                {
-                   console.log('unknown command'.red,ex,ex.stack);
-                   ask();
-                }
-
-                //rl.close();
-             });
-         })();
+                    //rl.close();
+                 });
+             })();
+         });
      });
    }
 }];
