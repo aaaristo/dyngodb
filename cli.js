@@ -125,10 +125,11 @@ const _json= function (path,content)
                   this.data.forEach(function (row,idx)
                   {
                       var obj= {},
+                          _nnan= function (v) { return v===0 ? v : (!!v ? v : '') }, 
                           _value= function (value)
                           {
                              if (value)
-                               return value.value;
+                               return _nnan(value.value);
                              else
                                return '';
                           },

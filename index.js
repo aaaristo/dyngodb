@@ -226,6 +226,9 @@ module.exports= function (opts,cb)
                                 else
                                 if (type=='string'&&!obj[key])
                                   _omit.push(key);
+                                else
+                                if (type=='number'&&isNaN(obj[key]))
+                                  _omit.push(key);
                            });
 
                            ops.push({ op: 'put', item: obj, omit: _omit });
