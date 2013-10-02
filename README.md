@@ -423,7 +423,7 @@ dyngodb
 ### Provisioned Throughput
 
 You can increase the througput automatically (on tables and indexes),
-dyngodb through the required steps until it reaches
+dyngodb will go through the required steps until it reaches
 the required value.
 
 <pre>
