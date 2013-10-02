@@ -6,6 +6,7 @@ var dyngo= require('./index'),
     async= require('async'),
     fs= require('fs'),
     csv = require('csv'),
+    xlsx = require('./lib/xlsx'),
     lazy= require('lazy'),
     util= require('util'),
     readline= require('readline'),
@@ -94,10 +95,78 @@ const _json= function (path,content)
 
          return promise;
       },
+      _xlsx= function (src)
+      {
+            var b64= fs.readFileSync(src, "base64"),
+                workbook= xlsx.decode(b64);
+
+            workbook.sheet= function (name)
+            { 
+               var worksheet;
+
+               this.worksheets.forEach(function (s)
+               {
+                  if (s.name==name)
+                  {
+                      worksheet= s;
+                      return false;
+                  }
+               });
+
+               return worksheet;
+            }
+
+            workbook.worksheets.forEach(function (s)
+            {
+               s.toJSON= function (fields,_transformFnc)
+               {
+                  var r= [];
+
+                  this.data.forEach(function (row,idx)
+                  {
+                      var obj= {},
+                          _value= function (value)
+                          {
+                             if (value)
+                               return value.value;
+                             else
+                               return '';
+                          },
+                          _val= function (field,value)
+                          {
+                             var r,
+                                 path= field.split('.'),
+                                 current= obj;
+
+                             for (var i=0;i<path.length-1;i++)
+                                current= current[path[i]]= current[path[i]] || {};
+
+                             current[path[path.length-1]]= _value(value);
+                          };
+
+                      for (var i=0;i<fields.length;i++)
+                         _val(fields[i],row[i]); 
+
+                      if (_transformFnc)
+                        obj= _transformFnc(obj,idx);
+                      
+                      if (Array.isArray(obj))
+                        r.concat(obj);
+                      else
+                      if (obj)
+                        r.push(obj);
+                  });
+
+                  return r;
+               }
+            });
+
+            return workbook;
+      },
       _eval= function (cmd,db,last)
       {
         var __csv= function (path, opts, cols, tfnc) { var args= Array.prototype.slice.apply(arguments); args.unshift(db._dyn); return _csv.apply(null,args); };
-        return eval('(function (db,last,_,json,csv){ return '+cmd+'; })')(db,last,_,_json,__csv);
+        return eval('(function (db,last,_,json,csv,xlsx){ return '+cmd+'; })')(db,last,_,_json,__csv,_xlsx);
       },
       _dobatch= function (db,lines,done)
       {
