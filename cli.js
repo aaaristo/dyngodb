@@ -5,6 +5,7 @@ const NOPE= function (){};
 var dyngo= require('./index'),
     async= require('async'),
     fs= require('fs'),
+    csv = require('csv'),
     lazy= require('lazy'),
     util= require('util'),
     readline= require('readline'),
@@ -33,10 +34,70 @@ const _json= function (path,content)
           {
               console.log((ex+'').red);
           }
-      }, 
+      },
+      _toJSON= function (fields,_transformFnc)
+      {
+          var r= [];
+
+          this.forEach(function (row,idx)
+          {
+              var obj= {},
+                  _val= function (field,value)
+                  {
+                     var r,
+                         path= field.split('.'),
+                         current= obj;
+
+                     for (var i=0;i<path.length-1;i++)
+                        current= current[path[i]]= current[path[i]] || {};
+
+                     current[path[path.length-1]]= value;
+                  };
+
+              for (var i=0;i<fields.length;i++)
+                 _val(fields[i],row[i]);
+
+              if (_transformFnc)
+                obj= _transformFnc(obj,idx);
+
+              if (Array.isArray(obj))
+                r.concat(obj);
+              else
+              if (obj)
+                r.push(obj);
+          });
+
+          return r;
+      },
+      _csv= function (dyn, path, opts, cols, tfnc)
+      {
+         var raster= [],
+             promise= dyn.promise(['end','results']),
+             count= 0;
+
+         raster.toJSON= _toJSON;
+
+         csv()
+            .from.path(path, opts)
+            .on('record',function (row,index)
+            {
+                 process.stdout.write(('\r'+(count++)).yellow);
+                 raster.push(row);
+            })
+            .on('end',function (count)
+            {
+                 console.log(('\r'+count).green);
+                 promise.trigger.results(raster.toJSON(cols,tfnc));
+                 promise.trigger.end();
+            })
+            .on('error', promise.error);
+
+         return promise;
+      },
       _eval= function (cmd,db,last)
       {
-        return eval('(function (db,last,_,json){ return '+cmd+'; })')(db,last,_,_json);
+        var __csv= function (path, opts, cols, tfnc) { var args= Array.prototype.slice.apply(arguments); args.unshift(db._dyn); return _csv.apply(null,args); };
+        return eval('(function (db,last,_,json,csv){ return '+cmd+'; })')(db,last,_,_json,__csv);
       },
       _dobatch= function (db,lines,done)
       {
@@ -208,11 +269,17 @@ var args= [function (err,db)
                      },
                      _print= function (obj,cb)
                      {
-                         db.cleanup(obj).clean(function (obj)
+                         if (obj.$old||(obj[0]&&obj[0].$old))
+                             db.cleanup(obj).clean(function (obj)
+                             {
+                                console.log(util.inspect(obj,{ depth: null }));
+                                cb();
+                             });
+                         else
                          {
-                            console.log(util.inspect(obj,{ depth: null }));
-                            cb();
-                         });
+                             console.log(util.inspect(obj,{ depth: null }));
+                             cb();
+                         }
                      };
 
                  rl.question('> ', function (answer) 
