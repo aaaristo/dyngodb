@@ -381,9 +381,9 @@ Using the *.dyngorc* file you can issue some commands before using the console (
 
 *commands.txt*
 <pre>
-db.test.save([{ name: 'John' },{ name: 'Jane' })
-db.test.save([{ name: 'John' },{ name: 'Jane' })
-db.test.save([{ name: 'John' },{ name: 'Jane' })
+db.test.save([{ name: 'John' },{ name: 'Jane' }])
+db.test.save([{ name: 'John' },{ name: 'Jane' }])
+db.test.save([{ name: 'John' },{ name: 'Jane' }])
 </pre>
 
 <pre>
@@ -400,6 +400,25 @@ dyngodb
 > t1.scan({ limit: 10 }).pipe(t2.mput('put')).on('finish',function () { console.log('done'); })
 </pre>
 
+### basic CSV (todo: stream)
+
+Example of loading a csv file (see [node-csv](https://github.com/wdavidw/node-csv) for options)
+<pre>
+dyngodb
+> csv('my/path/to.csv',{ delimiter: ';', escape: '"' },['id','name','mail'])
+> last
+> db.mytbl.save(last)
+</pre>
+
+### basic XLSX
+
+Example of loading an xlsx file
+<pre>
+dyngodb
+> workbook= xlsx('my/path/to.xlsx') 
+> contacts= workbook.sheet('Contacts').toJSON(['id','name','mail'])
+> db.mytbl.save(contacts)
+</pre>
 
 ### Help wanted!
 
