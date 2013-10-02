@@ -420,6 +420,19 @@ dyngodb
 > db.mytbl.save(contacts)
 </pre>
 
+### Provisioned Throughput
+
+You can increase the througput automatically (on tables and indexes),
+dyngodb through the required steps until it reaches
+the required value.
+
+<pre>
+dyngodb
+> db.mytbl.modify(1024,1024)
+> db.mytbl.indexes[0].modify(1024,1024)
+</pre>
+
+
 ### Help wanted!
 
 Your help is highly appreciated: we need to test / discuss / fix code, performance, roadmap
