@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/aaaristo/dyngodb.png?label=ready)](https://waffle.io/aaaristo/dyngodb)  
 dyngodb
 =======
 
