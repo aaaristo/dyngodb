@@ -1,4 +1,4 @@
-dyngodb
+dyngodb [![Stories in Ready](https://badge.waffle.io/aaaristo/dyngodb.png)](http://waffle.io/aaaristo/dyngodb)
 =======
 
 An **experiment** ([alpha](http://en.wikipedia.org/wiki/Software_release_life_cycle#Alpha)) to get a [MongoDB](http://www.mongodb.org/) *like* interface in front of [DynamoDB](http://aws.amazon.com/dynamodb/)
