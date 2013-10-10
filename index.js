@@ -160,6 +160,7 @@ module.exports= function (opts,cb)
                         },
                         _index= function (obj)
                         {
+                             if (!obj.$ref)
                              table.indexes.forEach(function (index)
                              {
                                 var iops= index.update(obj) || {};
@@ -205,12 +206,14 @@ module.exports= function (opts,cb)
                                               if (val.$id&&val.$id!=$id)
                                               {
                                                  _save(val);
-                                                 val.$ref= val.$id;
+                                                 _save({ $id: $id, $pos: pos, $ref: val.$id });
                                               }
-
-                                              val.$id= $id;
-                                              val.$pos= pos;
-                                              _save(val);
+                                              else
+                                              {
+                                                 val.$id= $id;
+                                                 val.$pos= pos;
+                                                 _save(val);
+                                              }
                                            });
 
                                            _omit.push(key);
