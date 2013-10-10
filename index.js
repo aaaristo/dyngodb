@@ -206,7 +206,7 @@ module.exports= function (opts,cb)
                                               if (val.$id&&val.$id!=$id)
                                               {
                                                  _save(val);
-                                                 _save({ $id: $id, $pos: pos, $ref: val.$id });
+                                                 _save({ $id: $id, $pos: pos, $ref: val.$id+'$:$'+val.$pos });
                                               }
                                               else
                                               {
@@ -222,7 +222,7 @@ module.exports= function (opts,cb)
                                    else
                                    {
                                        _save(desc);
-                                       obj['$$'+key]= desc.$id;
+                                       obj['$$'+key]= desc.$id+'$:$'+desc.$pos;
                                        _omit.push(key);
                                    }
                                 } 
