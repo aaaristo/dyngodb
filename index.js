@@ -197,26 +197,42 @@ module.exports= function (opts,cb)
                                    else
                                    if (Array.isArray(desc))
                                    {
-                                       if (desc.length&&typeof desc[0]=='object')
+                                       if (desc.length)
                                        {
-                                           var $id= obj['$$$'+key]= obj['$$$'+key] || uuid();
-
-                                           desc.forEach(function (val, pos)
+                                           if (typeof desc[0]=='object')
                                            {
-                                              if (val.$id&&val.$id!=$id)
-                                              {
-                                                 _save(val);
-                                                 _save({ $id: $id, $pos: pos, $ref: val.$id+'$:$'+val.$pos });
-                                              }
-                                              else
-                                              {
-                                                 val.$id= $id;
-                                                 val.$pos= pos;
-                                                 _save(val);
-                                              }
-                                           });
+                                               var $id= obj['$$$'+key]= obj['$$$'+key] || uuid();
 
-                                           _omit.push(key);
+                                               desc.forEach(function (val, pos)
+                                               {
+                                                  if (val.$id&&val.$id!=$id)
+                                                  {
+                                                     _save(val);
+                                                     _save({ $id: $id, $pos: pos, $ref: val.$id+'$:$'+val.$pos });
+                                                  }
+                                                  else
+                                                  {
+                                                     val.$id= $id;
+                                                     val.$pos= pos;
+                                                     _save(val);
+                                                  }
+                                               });
+
+                                               _omit.push(key);
+                                           }
+                                       }
+                                       else
+                                       {
+                                          var $id= obj['$$$'+key];
+
+                                          if ($id&&obj.$old[key].length)
+                                            obj.$old[key].forEach(function (item)
+                                            {
+                                               ops.push({ op: 'del', item: { $id: $id, $pos: item.$pos } });
+                                            });
+
+                                          delete obj['$$$'+key];
+                                          delete obj[key];
                                        }
                                    }
                                    else
