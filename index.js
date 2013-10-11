@@ -172,9 +172,8 @@ module.exports= function (opts,cb)
                                 });
                              });
                         },
-                        _remove= function (item,skipItem)
+                        _remove= function (item)
                         {
-                           if (!skipItem)
                             ops.push({ op: 'del', item: { $id: item.$id, $pos: item.$pos } });
 
                            if (!obj.$ref)
@@ -225,10 +224,18 @@ module.exports= function (opts,cb)
                                                    var old= obj.$old[key];
 
                                                    if (old&&old.length>desc.length)
-                                                     old.forEach(function (oitem)
+                                                     old.forEach(function (oitem,idx)
                                                      {
-                                                        if (!_.findWhere(desc,{ $pos: oitem.$pos }))
-                                                          _remove(oitem,true);
+                                                        if (oitem.$id==$id)
+                                                        {
+                                                            if (!_.findWhere(desc,{ $pos: oitem.$pos }))
+                                                              _remove(oitem);
+                                                        }
+                                                        else
+                                                        {
+                                                            if (!_.findWhere(desc,{ $pos: idx }))
+                                                              _remove({ $id: $id, $pos: idx, $ref: oitem.$id+'$:$'+oitem.$pos });         
+                                                        }
                                                      });
                                                }
 
@@ -293,7 +300,7 @@ module.exports= function (opts,cb)
                            {
                               var tops= gops[_table];
 
-                              async.forEach(tops,
+                              async.forEachSeries(tops, // forEachSeries: when deleting elements from array i need deletes of old item $pos done before new item $pos put
                               function (op,done)
                               {
                                  var tab= dyn.table(_table),
