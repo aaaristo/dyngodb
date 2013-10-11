@@ -147,224 +147,229 @@ module.exports= function (opts,cb)
                 var objs= Array.isArray(_obj) ? _obj : [_obj],
                     p= dyn.promise([],'updatedsinceread'), found= false;
 
-                async.forEach(objs,
-                function (obj,done)
+                process.nextTick(function ()
                 {
-                    var gops= {},
-                        ops= gops[table._dynamo.TableName]= [],
-                        _hashrange= function (obj)
-                        {
-                            obj.$id= obj.$id || uuid();
-                            obj.$pos= obj.$pos || 0;
-                            obj.$version= (obj.$version || 0)+1;
-                        },
-                        _index= function (obj)
-                        {
-                             if (!obj.$ref)
-                             table.indexes.forEach(function (index)
-                             {
-                                var iops= index.update(obj,'put') || {};
 
-                                _.keys(iops).forEach(function (table)
-                                {
-                                   var tops= gops[table]= gops[table] || []; 
-                                   tops.push.apply(tops,_.collect(iops[table],function (op) { op.index= true; return op; }));
-                                });
-                             });
-                        },
-                        _remove= function (item)
-                        {
-                            ops.push({ op: 'del', item: { $id: item.$id, $pos: item.$pos } });
+                    async.forEach(objs,
+                    function (obj,done)
+                    {
+                        var gops= {},
+                            ops= gops[table._dynamo.TableName]= [],
+                            _hashrange= function (obj)
+                            {
+                                obj.$id= obj.$id || uuid();
+                                obj.$pos= obj.$pos || 0;
+                                obj.$version= (obj.$version || 0)+1;
+                            },
+                            _index= function (obj)
+                            {
+                                 if (!obj.$ref)
+                                 table.indexes.forEach(function (index)
+                                 {
+                                    var iops= index.update(obj,'put') || {};
 
-                           if (!obj.$ref)
-                             table.indexes.forEach(function (index)
-                             {
-                                var iops= index.update(item,'del') || {};
+                                    _.keys(iops).forEach(function (table)
+                                    {
+                                       var tops= gops[table]= gops[table] || []; 
+                                       tops.push.apply(tops,_.collect(iops[table],function (op) { op.index= true; return op; }));
+                                    });
+                                 });
+                            },
+                            _remove= function (item)
+                            {
+                                ops.push({ op: 'del', item: { $id: item.$id, $pos: item.$pos } });
 
-                                _.keys(iops).forEach(function (table)
-                                {
-                                   var tops= gops[table]= gops[table] || []; 
-                                   tops.push.apply(tops,_.collect(iops[table],function (op) { op.index= true; return op; }));
-                                });
-                             });
-                        },
-                        _save= function (obj)
-                        {
-                           var _keys= _.keys(obj),
-                               _omit= ['$old'],
-                               diffs= diff(obj.$old || {},_.omit(obj,'$old'));
+                               if (!obj.$ref)
+                                 table.indexes.forEach(function (index)
+                                 {
+                                    var iops= index.update(item,'del') || {};
 
-                           if ((obj.$id&&_keys.length==1)||!diffs
-                                ||(obj.$old || {$version: 0}).$version<obj.$version) return;
+                                    _.keys(iops).forEach(function (table)
+                                    {
+                                       var tops= gops[table]= gops[table] || []; 
+                                       tops.push.apply(tops,_.collect(iops[table],function (op) { op.index= true; return op; }));
+                                    });
+                                 });
+                            },
+                            _save= function (obj)
+                            {
+                               var _keys= _.keys(obj),
+                                   _omit= ['$old'],
+                                   diffs= diff(obj.$old || {},_.omit(obj,'$old'));
 
-                           _hashrange(obj);
-                           _index(obj);
+                               if ((obj.$id&&_keys.length==1)||!diffs
+                                    ||(obj.$old || {$version: 0}).$version<obj.$version) return;
 
-                           _keys.forEach(function (key)
-                           {
-                                var type= typeof obj[key];
+                               _hashrange(obj);
+                               _index(obj);
 
-                                if (type=='object'&&key!='$old')
-                                {
-                                   var desc= obj[key];
+                               _keys.forEach(function (key)
+                               {
+                                    var type= typeof obj[key];
 
-                                   if (desc==null)
-                                     delete obj[key];
-                                   else
-                                   if (Array.isArray(desc))
-                                   {
-                                       if (desc.length)
+                                    if (type=='object'&&key!='$old')
+                                    {
+                                       var desc= obj[key];
+
+                                       if (desc==null)
+                                         delete obj[key];
+                                       else
+                                       if (Array.isArray(desc))
                                        {
-                                           if (typeof desc[0]=='object')
+                                           if (desc.length)
                                            {
-                                               var $id= obj['$$$'+key]= obj['$$$'+key] || uuid();
-
-                                               if (obj.$old)
+                                               if (typeof desc[0]=='object')
                                                {
-                                                   var old= obj.$old[key];
+                                                   var $id= obj['$$$'+key]= obj['$$$'+key] || uuid();
 
-                                                   if (old&&old.length>desc.length)
-                                                     old.forEach(function (oitem,idx)
-                                                     {
-                                                        if (oitem.$id==$id)
-                                                        {
-                                                            if (!_.findWhere(desc,{ $pos: oitem.$pos }))
-                                                              _remove(oitem);
-                                                        }
-                                                        else
-                                                        {
-                                                            if (!_.findWhere(desc,{ $pos: idx }))
-                                                              _remove({ $id: $id, $pos: idx, $ref: oitem.$id+'$:$'+oitem.$pos });         
-                                                        }
-                                                     });
+                                                   if (obj.$old)
+                                                   {
+                                                       var old= obj.$old[key];
+
+                                                       if (old&&old.length>desc.length)
+                                                         old.forEach(function (oitem,idx)
+                                                         {
+                                                            if (oitem.$id==$id)
+                                                            {
+                                                                if (!_.findWhere(desc,{ $pos: oitem.$pos }))
+                                                                  _remove(oitem);
+                                                            }
+                                                            else
+                                                            {
+                                                                if (!_.findWhere(desc,{ $pos: idx }))
+                                                                  _remove({ $id: $id, $pos: idx, $ref: oitem.$id+'$:$'+oitem.$pos });         
+                                                            }
+                                                         });
+                                                   }
+
+                                                   desc.forEach(function (val, pos)
+                                                   {
+                                                      if (val.$id&&val.$id!=$id)
+                                                      {
+                                                         _save(val);
+                                                         _save({ $id: $id, $pos: pos, $ref: val.$id+'$:$'+val.$pos });
+                                                      }
+                                                      else
+                                                      {
+                                                         val.$id= $id;
+
+                                                         if (!isNaN(val.$pos)&&val.$pos!=pos)
+                                                         {
+                                                           delete val['$old'];
+                                                           delete val['$version'];
+                                                           _remove(val);
+                                                         }
+
+                                                         val.$pos= pos;
+                                                         _save(val);
+                                                      }
+                                                   });
+
+                                                   _omit.push(key);
                                                }
+                                           }
+                                           else
+                                           {
+                                              var $id= obj['$$$'+key];
 
-                                               desc.forEach(function (val, pos)
-                                               {
-                                                  if (val.$id&&val.$id!=$id)
-                                                  {
-                                                     _save(val);
-                                                     _save({ $id: $id, $pos: pos, $ref: val.$id+'$:$'+val.$pos });
-                                                  }
-                                                  else
-                                                  {
-                                                     val.$id= $id;
+                                              if ($id&&obj.$old[key].length)
+                                                obj.$old[key].forEach(_remove);
 
-                                                     if (!isNaN(val.$pos)&&val.$pos!=pos)
-                                                     {
-                                                       delete val['$old'];
-                                                       delete val['$version'];
-                                                       _remove(val);
-                                                     }
-
-                                                     val.$pos= pos;
-                                                     _save(val);
-                                                  }
-                                               });
-
-                                               _omit.push(key);
+                                              _omit.push(key);
+                                              _omit.push('$$$'+key);
                                            }
                                        }
                                        else
                                        {
-                                          var $id= obj['$$$'+key];
-
-                                          if ($id&&obj.$old[key].length)
-                                            obj.$old[key].forEach(_remove);
-
-                                          _omit.push(key);
-                                          _omit.push('$$$'+key);
+                                           _save(desc);
+                                           obj['$$'+key]= desc.$id+'$:$'+desc.$pos;
+                                           _omit.push(key);
                                        }
-                                   }
-                                   else
-                                   {
-                                       _save(desc);
-                                       obj['$$'+key]= desc.$id+'$:$'+desc.$pos;
-                                       _omit.push(key);
-                                   }
-                                } 
-                                else
-                                if (type=='string'&&!obj[key])
-                                  _omit.push(key);
-                                else
-                                if (type=='number'&&isNaN(obj[key]))
-                                  _omit.push(key);
-                           });
+                                    } 
+                                    else
+                                    if (type=='string'&&!obj[key])
+                                      _omit.push(key);
+                                    else
+                                    if (type=='number'&&isNaN(obj[key]))
+                                      _omit.push(key);
+                               });
 
-                           ops.push({ op: 'put', item: obj, omit: _omit });
-                        },
-                        _mput= function (gops,done)
+                               ops.push({ op: 'put', item: obj, omit: _omit });
+                            },
+                            _mput= function (gops,done)
+                            {
+                               async.forEach(_.keys(gops),
+                               function (_table,done)
+                               {
+                                  var tops= gops[_table];
+
+                                  async.forEachSeries(tops, // forEachSeries: when deleting elements from array i need deletes of old item $pos done before new item $pos put
+                                  function (op,done)
+                                  {
+                                     var tab= dyn.table(_table),
+                                         obj= op.item;
+                                       
+                                     if (op.index)
+                                       tab.hash('$hash',obj.$hash)
+                                          .range('$range',obj.$range);
+                                     else
+                                       tab.hash('$id',obj.$id)
+                                          .range('$pos',obj.$pos);
+
+                                     if (op.op=='put')
+                                         tab.put(_.omit(obj,op.omit),
+                                          function ()
+                                          {
+                                             _deep.clone(_.omit(obj,'$old'),function (clone)
+                                             {
+                                                 obj.$old= clone;
+                                                 done();
+                                             });
+                                          },
+                                          { expected: obj.$old ? { $version: obj.$old.$version } : undefined })
+                                          .error(done);
+                                     else
+                                     if (op.op=='del')
+                                         tab.delete(done)
+                                            .error(done);
+                                     else
+                                       done(new Error('unknown update type:'+op.op));
+                                  },
+                                  done);
+                               },
+                               done);
+                            };
+
+
+                        _save(obj);
+
+                        _.keys(gops).forEach(function (table)
                         {
-                           async.forEach(_.keys(gops),
-                           function (_table,done)
-                           {
-                              var tops= gops[_table];
+                            if (gops[table].length==0)
+                              delete gops[table];
+                            else
+                              found= true;
+                        });
 
-                              async.forEachSeries(tops, // forEachSeries: when deleting elements from array i need deletes of old item $pos done before new item $pos put
-                              function (op,done)
-                              {
-                                 var tab= dyn.table(_table),
-                                     obj= op.item;
-                                   
-                                 if (op.index)
-                                   tab.hash('$hash',obj.$hash)
-                                      .range('$range',obj.$range);
-                                 else
-                                   tab.hash('$id',obj.$id)
-                                      .range('$pos',obj.$pos);
-
-                                 if (op.op=='put')
-                                     tab.put(_.omit(obj,op.omit),
-                                      function ()
-                                      {
-                                         _deep.clone(_.omit(obj,'$old'),function (clone)
-                                         {
-                                             obj.$old= clone;
-                                             done();
-                                         });
-                                      },
-                                      { expected: obj.$old ? { $version: obj.$old.$version } : undefined })
-                                      .error(done);
-                                 else
-                                 if (op.op=='del')
-                                     tab.delete(done)
-                                        .error(done);
-                                 else
-                                   done(new Error('unknown update type:'+op.op));
-                              },
-                              done);
-                           },
-                           done);
-                        };
-
-
-                    _save(obj);
-
-                    _.keys(gops).forEach(function (table)
-                    {
-                        if (gops[table].length==0)
-                          delete gops[table];
+                        if (found)
+                          _mput(gops,done);
                         else
-                          found= true;
+                          process.nextTick(done);
+
+                    },
+                    function (err)
+                    {
+                          if (err)
+                          {
+                            if (err.code=='notfound')
+                              p.trigger.updatedsinceread();
+                            else
+                              p.trigger.error(err);
+                          }
+                          else
+                              p.trigger.success();
                     });
 
-                    if (found)
-                      _mput(gops,done);
-                    else
-                      process.nextTick(done);
-
-                },
-                function (err)
-                {
-                      if (err)
-                      {
-                        if (err.code=='notfound')
-                          p.trigger.updatedsinceread();
-                        else
-                          p.trigger.error(err);
-                      }
-                      else
-                          p.trigger.success();
                 });
 
                 return p;
