@@ -163,7 +163,24 @@ module.exports= function (opts,cb)
                              if (!obj.$ref)
                              table.indexes.forEach(function (index)
                              {
-                                var iops= index.update(obj) || {};
+                                var iops= index.update(obj,'put') || {};
+
+                                _.keys(iops).forEach(function (table)
+                                {
+                                   var tops= gops[table]= gops[table] || []; 
+                                   tops.push.apply(tops,_.collect(iops[table],function (op) { op.index= true; return op; }));
+                                });
+                             });
+                        },
+                        _remove= function (item,skipItem)
+                        {
+                           if (!skipItem)
+                            ops.push({ op: 'del', item: { $id: item.$id, $pos: item.$pos } });
+
+                           if (!obj.$ref)
+                             table.indexes.forEach(function (index)
+                             {
+                                var iops= index.update(item,'del') || {};
 
                                 _.keys(iops).forEach(function (table)
                                 {
@@ -203,6 +220,18 @@ module.exports= function (opts,cb)
                                            {
                                                var $id= obj['$$$'+key]= obj['$$$'+key] || uuid();
 
+                                               if (obj.$old)
+                                               {
+                                                   var old= obj.$old[key];
+
+                                                   if (old&&old.length>desc.length)
+                                                     old.forEach(function (oitem)
+                                                     {
+                                                        if (!_.findWhere(desc,{ $pos: oitem.$pos }))
+                                                          _remove(oitem,true);
+                                                     });
+                                               }
+
                                                desc.forEach(function (val, pos)
                                                {
                                                   if (val.$id&&val.$id!=$id)
@@ -213,6 +242,14 @@ module.exports= function (opts,cb)
                                                   else
                                                   {
                                                      val.$id= $id;
+
+                                                     if (!isNaN(val.$pos)&&val.$pos!=pos)
+                                                     {
+                                                       delete val['$old'];
+                                                       delete val['$version'];
+                                                       _remove(val);
+                                                     }
+
                                                      val.$pos= pos;
                                                      _save(val);
                                                   }
@@ -226,13 +263,10 @@ module.exports= function (opts,cb)
                                           var $id= obj['$$$'+key];
 
                                           if ($id&&obj.$old[key].length)
-                                            obj.$old[key].forEach(function (item)
-                                            {
-                                               ops.push({ op: 'del', item: { $id: $id, $pos: item.$pos } });
-                                            });
+                                            obj.$old[key].forEach(_remove);
 
-                                          delete obj['$$$'+key];
-                                          delete obj[key];
+                                          _omit.push(key);
+                                          _omit.push('$$$'+key);
                                        }
                                    }
                                    else
@@ -287,7 +321,7 @@ module.exports= function (opts,cb)
                                  else
                                  if (op.op=='del')
                                      tab.delete(done)
-                                     .error(done);
+                                        .error(done);
                                  else
                                    done(new Error('unknown update type:'+op.op));
                               },
@@ -310,14 +344,14 @@ module.exports= function (opts,cb)
                     if (found)
                       _mput(gops,done);
                     else
-                        process.nextTick(done);
+                      process.nextTick(done);
 
                 },
                 function (err)
                 {
                       if (err)
                       {
-                        if (err.code='notfound')
+                        if (err.code=='notfound')
                           p.trigger.updatedsinceread();
                         else
                           p.trigger.error(err);
