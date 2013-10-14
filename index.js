@@ -109,6 +109,12 @@ module.exports= function (opts,cb)
                   return p;
                 };
 
+                p.noderef= function ()
+                {
+                  modifiers.noderef= true; 
+                  return p;
+                };
+
                 var origCount= _.bind(p.count,p);
 
                 p.count= function (fn)
@@ -163,7 +169,6 @@ module.exports= function (opts,cb)
                             },
                             _index= function (obj)
                             {
-                                 if (!obj.$ref)
                                  table.indexes.forEach(function (index)
                                  {
                                     var iops= index.update(obj,'put') || {};
@@ -179,9 +184,8 @@ module.exports= function (opts,cb)
                             {
                                 ops.push({ op: 'del', item: { $id: item.$id, $pos: item.$pos } });
 
-                               if (!obj.$ref)
-                                 table.indexes.forEach(function (index)
-                                 {
+                                table.indexes.forEach(function (index)
+                                {
                                     var iops= index.update(item,'del') || {};
 
                                     _.keys(iops).forEach(function (table)
@@ -189,7 +193,7 @@ module.exports= function (opts,cb)
                                        var tops= gops[table]= gops[table] || []; 
                                        tops.push.apply(tops,_.collect(iops[table],function (op) { op.index= true; return op; }));
                                     });
-                                 });
+                                });
                             },
                             _save= function (obj)
                             {
