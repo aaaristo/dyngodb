@@ -301,7 +301,7 @@ module.exports= function (opts,cb)
                                });
 
                                if (!obj.$refs.length) 
-                                 _omit.push('$refs');
+                                 delete obj['$refs'];
                                else
                                  obj.$refs= _.uniq(obj.$refs);
 
