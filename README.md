@@ -379,7 +379,7 @@ In dyngodb you have 2 DynamoDB table KeySchema:
 
 Some automatically generated attributes:
 
-* $id: the object identifier
+* $id: the object identifier (if not set manually)
 * $pos: the object position in an array
 * $version: the revision of the object
 * $refs: an array of $id/s referred by the object (indexable as a string set see fat.js)
