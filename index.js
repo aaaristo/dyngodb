@@ -166,6 +166,7 @@ module.exports= function (opts,cb)
                                 obj.$id= obj.$id || uuid();
                                 obj.$pos= obj.$pos || 0;
                                 obj.$version= (obj.$version || 0)+1;
+                                obj.$refs= [];
                             },
                             _index= function (obj)
                             {
@@ -205,18 +206,17 @@ module.exports= function (opts,cb)
                                     ||(obj.$old || {$version: 0}).$version<obj.$version) return;
 
                                _hashrange(obj);
-                               _index(obj);
 
                                _keys.forEach(function (key)
                                {
                                     var type= typeof obj[key];
 
-                                    if (type=='object'&&key!='$old')
+                                    if (type=='object'&&!_.contains(['$old','$refs'],key))
                                     {
                                        var desc= obj[key];
 
                                        if (desc==null)
-                                         delete obj[key];
+                                         _omit.push(key);
                                        else
                                        if (Array.isArray(desc))
                                        {
@@ -252,6 +252,7 @@ module.exports= function (opts,cb)
                                                       {
                                                          _save(val);
                                                          _save({ $id: $id, $pos: pos, $ref: val.$id+'$:$'+val.$pos });
+                                                         obj.$refs.push(val.$id);
                                                       }
                                                       else
                                                       {
@@ -287,6 +288,7 @@ module.exports= function (opts,cb)
                                        {
                                            _save(desc);
                                            obj['$$'+key]= desc.$id+'$:$'+desc.$pos;
+                                           obj.$refs.push(desc.$id);
                                            _omit.push(key);
                                        }
                                     } 
@@ -297,6 +299,13 @@ module.exports= function (opts,cb)
                                     if (type=='number'&&isNaN(obj[key]))
                                       _omit.push(key);
                                });
+
+                               if (!obj.$refs.length) 
+                                 _omit.push('$refs');
+                               else
+                                 obj.$refs= _.uniq(obj.$refs);
+
+                               _index(obj); // index after $ fields are set so they are indexable too
 
                                ops.push({ op: 'put', item: obj, omit: _omit });
                             },
