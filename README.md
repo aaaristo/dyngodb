@@ -377,6 +377,15 @@ In dyngodb you have 2 DynamoDB table KeySchema:
   $hash represents probably the container of the results for a certain operator. and $range is used to keep the key
   attributes of the results ($id+':'+$pos).
 
+Some automatically generated attributes:
+
+* $id: the object identifier
+* $pos: the object position in an array
+* $version: the revision of the object
+* $refs: an array of $id/s referred by the object (indexable as a string set see fat.js)
+* $$$<attr name>: placeholders for arrays
+* $$<attr name>: placeholders for objects
+
 ### Local
 
 It is possible to use [DynamoDB Local](http://aws.typepad.com/aws/2013/09/dynamodb-local-for-desktop-development.html) by adding *--local* to the commandline:
