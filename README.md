@@ -383,8 +383,8 @@ Some automatically generated attributes:
 * $pos: the object position in an array
 * $version: the revision of the object
 * $refs: an array of $id/s referred by the object (indexable as a string set see fat.js)
-* $$$<attr name>: placeholders for arrays
-* $$<attr name>: placeholders for objects
+* $$$&lt;attr name&gt;: placeholders for arrays
+* $$&lt;attr name&gt;: placeholders for objects
 
 ### Local
 
