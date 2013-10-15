@@ -172,7 +172,7 @@ There are actually 2 indexes (4 but only 2 are used):
     db.test.save({ type: 'person', name: 'Jane', tags: ['hipster','hacker'] })
     db.test.ensureIndex({ tags: 'SS' })
     db.test.find({ tags: 'hipster' })
-    db.test.find({ tags: ['hipster','hacker'] })
+    db.test.find({ tags: { $all: ['hipster','hacker'] } })
   </pre>
 
 * cloud-search.js: is a fulltext index using AWS CloudSearch under the covers.
