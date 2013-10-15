@@ -163,6 +163,17 @@ There are actually 2 indexes (4 but only 2 are used):
   will filter/sort the rest. Local secondary indexes are created an all indexed attributes,
   to support non-EQ operators, that means that actually you can index only 5 attributes with
   this kind of index.
+  
+  There is also some support for [$all](http://docs.mongodb.org/manual/reference/operator/query/all/) operator:
+  the fat index can index set fields, actually saving the combinations in the index so that you can query them.
+  ***NOTE***: if you have long set fields this will seriously impact write throughput.
+  
+  <pre>
+    db.test.save({ type: 'person', name: 'Jane', tags: ['hipster','hacker'] })
+    db.test.ensureIndex({ tags: 'SS' })
+    db.test.find({ tags: 'hipster' })
+    db.test.find({ tags: ['hipster','hacker'] })
+  </pre>
 
 * cloud-search.js: is a fulltext index using AWS CloudSearch under the covers.
 
