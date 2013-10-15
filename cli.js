@@ -167,7 +167,7 @@ const _json= function (path,content)
       _eval= function (cmd,db,last)
       {
         var __csv= function (path, opts, cols, tfnc) { var args= Array.prototype.slice.apply(arguments); args.unshift(db._dyn); return _csv.apply(null,args); };
-        return eval('(function (db,last,_,json,csv,xlsx){ return '+cmd+'; })')(db,last,_,_json,__csv,_xlsx);
+        return eval('(function (db,last,_,json,csv,xlsx,argv){ return '+cmd+'; })')(db,last,_,_json,__csv,_xlsx,argv);
       },
       _dobatch= function (db,lines,done)
       {
@@ -182,14 +182,40 @@ const _json= function (path,content)
 
                            var promise= _eval(cmd,db,last);
 
-                           if (!promise.success)
-                             done(); 
+                           if (promise==undefined||!(promise.result||promise.success||promise.error||promise.notfound))
+                             done();
                            else
-                             promise.success(function ()
-                             {
-                                 console.log('done!'.green);
-                                 done();
-                             });
+                           {
+                               if (promise.notfound)
+                                 promise.notfound(function ()
+                                 {
+                                     last= undefined;
+                                     done();
+                                 });
+                               else
+                               if (promise.error)
+                                 promise.error(function (err)
+                                 {
+                                     console.log((err+'').red,err.stack); 
+                                     done();
+                                 });
+
+                               if (promise.result)
+                                 promise.result(function (res)
+                                 {
+                                     last= res;
+                                     done();
+                                 });
+                               else
+                               if (promise.success)
+                                 promise.success(function ()
+                                 {
+                                     console.log('done!'.green);
+                                     done();
+                                 });
+                           }
+
+
                         },done);
                 };
       },
