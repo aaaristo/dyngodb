@@ -19,6 +19,19 @@ const _traverse= function (o, fn)
              if (typeof (o[i])=='object')
                _traverse(o[i],fn);
          });
+      },
+      _collect= function (consume)
+      {
+          return function (cons) 
+          { 
+                var c;
+
+                if (!(c=consume[cons.table]))
+                  c= consume[cons.table]= { read: 0, write: 0 };
+
+                c.read+= cons.read;
+                c.write+= cons.write;
+          };
       };
 
 module.exports= function (opts,cb)
@@ -69,7 +82,7 @@ module.exports= function (opts,cb)
 
                 modifiers.$consistent= !!table.$consistent;
 
-                p= dyn.promise(['results','count','end']);
+                p= dyn.promise(['results','count','end'],null,'consumed');
 
                 process.nextTick(function ()
                 {
@@ -134,7 +147,7 @@ module.exports= function (opts,cb)
             {
                 var p, args= arguments, table= this;
 
-                p= dyn.promise('result','notfound');
+                p= dyn.promise('result','notfound','consumed');
 
                 table.find.apply(table,args).limit(1).results(function (items)
                 {
@@ -143,6 +156,7 @@ module.exports= function (opts,cb)
                      else
                        p.trigger.result(items[0]); 
                 })
+                .consumed(p.trigger.consumed)
                 .error(p.trigger.error);
 
                 return p;
@@ -156,7 +170,8 @@ module.exports= function (opts,cb)
             table.save= function (_obj)
             {
                 var objs= Array.isArray(_obj) ? _obj : [_obj],
-                    p= dyn.promise([],'updatedsinceread'), found= false;
+                    consume= {},
+                    p= dyn.promise(null,'updatedsinceread','consumed'), found= false;
 
                 process.nextTick(function ()
                 {
@@ -345,6 +360,7 @@ module.exports= function (opts,cb)
                                              });
                                           },
                                           { expected: obj.$old ? { $version: obj.$old.$version } : undefined })
+                                          .consumed(_collect(consume))
                                           .error(done);
                                      else
                                      if (op.op=='del')
@@ -377,6 +393,8 @@ module.exports= function (opts,cb)
                     },
                     function (err)
                     {
+                          p.trigger.consumed(consume);
+
                           if (err)
                           {
                             if (err.code=='notfound')
@@ -421,7 +439,24 @@ module.exports= function (opts,cb)
 
             table.remove= function (filter)
             {
-                var p= dyn.promise(),
+                var p= dyn.promise(null,null,'consumed'),
+                    found= false,
+                    consume= {},
+                    _consumed= function (cons)
+                    {
+                       consume.read+= cons.read;
+                       consume.write+= cons.write;
+                    },
+                    _error= function (err)
+                    {
+                       p.trigger.consumed(consume);
+                       p.trigger.error(err);
+                    },
+                    _success= function ()
+                    {
+                       p.trigger.consumed(consume);
+                       p.trigger.success();
+                    },
                     cursor= table.find(filter,table.indexes.length ? undefined : { $id: 1, $pos: 1 }),
                     _deleteItem= function (obj,done)
                     {
@@ -431,7 +466,7 @@ module.exports= function (opts,cb)
                               async.forEach(table.indexes,
                               function (index,done)
                               {
-                                   index.remove(obj,done);
+                                   index.remove(obj).success(done).error(done).consumed(_collect(consume));
                               },done);
                           },
                           function (done)
@@ -440,6 +475,7 @@ module.exports= function (opts,cb)
                                  .hash('$id',obj.$id)
                                  .range('$pos',obj.$pos)
                                  .delete(done)
+                                 .consumed(_collect(consume))
                                  .error(done);
                           }],
                           done);
@@ -447,6 +483,9 @@ module.exports= function (opts,cb)
 
                 cursor.results(function (items)
                 {
+                    if (items.length)
+                      found= true;
+
                     async.forEach(items,_deleteItem,
                     function (err)
                     {
@@ -455,47 +494,94 @@ module.exports= function (opts,cb)
                        else
                        if (items.next)
                          items.next();
+                       else
+                         _success();
                     });
                 })
-                .error(p.trigger.error)
-                .end(p.trigger.success);
+                .consumed(_consumed)
+                .error(_error)
+                .end(function ()
+                     {
+                         if (!found)
+                           _success();
+                     });
 
                 return p;
             };
 
             table.update= function (query,update)
             {
-                var p= dyn.promise(),
+                var p= dyn.promise(null,null,'consumed'),
                     cursor= table.consistent().find(query),
+                    found= false,
+                    consume= {},
+                    _consumed= function (cons)
+                    {
+                        _.keys(cons).forEach(function (table)
+                        {
+                            var c, tcons= cons[table];
+
+                            if (!(c=consume[table]))
+                              c= consume[table]= { read: 0, write: 0 };
+
+                            c.read+= tcons.read;
+                            c.write+= tcons.write;
+                        }); 
+                    },
+                    _error= function (err)
+                    {
+                       p.trigger.consumed(consume);
+                       p.trigger.error(err);
+                    },
+                    _success= function ()
+                    {
+                       p.trigger.consumed(consume);
+                       p.trigger.success();
+                    },
                     _updateItem= function (item,done)
                     {
                        if (update.$set)
                          table.save(_.extend(item,update.$set))
                               .success(done)
+                              .consumed(_consumed)
                               .error(done); 
                        else
                        if (update.$unset)
                          table.save(_.omit(item,_.keys(update.$unset)))
                               .success(done)
+                              .consumed(_consumed)
                               .error(done); 
                        else
                          done(new Error('unknown update type')); 
                     },
                     _updateItems= function (items)
                     {
+                       if (items.length)
+                         found= true;
+
                        async.forEach(items,_updateItem,
                        function (err)
                        {
-                         if (err)
-                           cursor.trigger.error(err);
+                          if (err)
+                            cursor.trigger.error(err);
+                          else
+                          if (items.next)
+                            items.next();    
+                          else
+                            _success();
                        }); 
                     };
 
 
                 cursor
                      .results(_updateItems)
-                     .error(p.trigger.error)
-                     .end(p.trigger.success);
+                     .consumed(_consumed)
+                     .error(_error)
+                     .end(function ()
+                     {
+                         if (!found)
+                           _success();
+                     });
 
                 return p;
             };

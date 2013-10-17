@@ -313,6 +313,22 @@ const _json= function (path,content)
         
           if (_history&&_history.length>0)
             fs.writeFileSync(historyFile,JSON.stringify(_history),'utf8');
+      },
+      _collect= function (consume)
+      {
+          return function (cons) 
+          { 
+            _.keys(cons).forEach(function (table)
+            {
+                var c, tcons= cons[table];
+
+                if (!(c=consume[table]))
+                  c= consume[table]= { read: 0, write: 0 };
+
+                c.read+= tcons.read;
+                c.write+= tcons.write;
+            }); 
+          };
       };
 
 process.on('exit', saveHistory);
@@ -410,12 +426,24 @@ var args= [function (err,db)
                            end,
                            printed,
                            chunks= 0,
+                           consume= { read: 0, write: 0 },
                            _doneres= function () { elapsed(); ask(); },
                            doneres= _.wrap(_doneres,function (done) {  if (printed&&end) done(); }),
                            elapsed= function ()
                            {
                               var diff= process.hrtime(time),
                                   secs= (diff[0]*1e9+diff[1])/1e9;
+
+                              _.keys(consume).forEach(function (table)
+                              {
+                                  var tcons= consume[table], s= secs<1 ? 1 : secs;
+
+                                  if (tcons.read)
+                                    console.log(('consumed read capacity['+table+']: '+tcons.read+' ('+(tcons.read/s)+' read/sec)').green);
+
+                                  if (tcons.write)
+                                    console.log(('consumed write capacity['+table+']: '+tcons.write+' ('+(tcons.write/s)+' write/sec)').green);
+                              });
 
                               if (chunks) console.log((chunks+' roundtrips').green);
                               console.log((secs+' secs').green);
@@ -428,6 +456,9 @@ var args= [function (err,db)
                        }
 
                        promise= promise || {};
+
+                       if (promise.consumed)
+                         promise.consumed(_collect(consume));
 
                        if (promise.error)
                          promise.error(_ask(function (err) 
