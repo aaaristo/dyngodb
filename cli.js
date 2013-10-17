@@ -235,7 +235,7 @@ const _json= function (path,content)
                 process.exit(0); 
          }));
 
-         new lazy(process.stdin).lines.forEach(function (l) { _lines.push(l.toString('utf8')); });
+         new lazy(process.stdin).lines.forEach(function (l) { if (l) _lines.push(l.toString('utf8')); });
 
          process.stdin.resume();
 

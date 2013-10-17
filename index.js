@@ -65,13 +65,14 @@ module.exports= function (opts,cb)
        {
             table.find= function (cond,projection,identity)
             {
-                var p, modifiers= {};
+                var p, modifiers= {}, table= this;
+
+                modifiers.$consistent= !!table.$consistent;
 
                 p= dyn.promise(['results','count','end']);
 
                 process.nextTick(function ()
                 {
-       //            buildQuery.apply(modifiers,args);
                    parser
                    .parse(table,modifiers,cond,projection,identity)
                    .parsed(function (query)
@@ -82,7 +83,6 @@ module.exports= function (opts,cb)
                        refiner.chain(p);
                    })
                    .error(p.trigger.error);
-
                 });
 
                 p.sort= function (o)
@@ -132,7 +132,7 @@ module.exports= function (opts,cb)
 
             table.findOne= function ()
             {
-                var p, args= arguments;
+                var p, args= arguments, table= this;
 
                 p= dyn.promise('result','notfound');
 
@@ -146,6 +146,11 @@ module.exports= function (opts,cb)
                 .error(p.trigger.error);
 
                 return p;
+            };
+
+            table.consistent= function ()
+            {
+                return _.extend({ $consistent: true }, table);
             };
 
             table.save= function (_obj)
@@ -461,7 +466,7 @@ module.exports= function (opts,cb)
             table.update= function (query,update)
             {
                 var p= dyn.promise(),
-                    cursor= table.find(query),
+                    cursor= table.consistent().find(query),
                     _updateItem= function (item,done)
                     {
                        if (update.$set)
