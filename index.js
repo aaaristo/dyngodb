@@ -658,7 +658,7 @@ module.exports= function (opts,cb)
                                 var hash= _.findWhere(data.Table.KeySchema,{ KeyType: 'HASH' }),
                                     range= _.findWhere(data.Table.KeySchema,{ KeyType: 'RANGE' });
 
-                                if (hash.AttributeName&&hash.AttributeName=='$id'&&range&&range.AttributeName=='$pos')
+                                if (hash&&hash.AttributeName&&hash.AttributeName=='$id'&&range&&range.AttributeName=='$pos')
                                   db[tables[table]]= configureTable({ _dynamo: data.Table, indexes: [] });
                               }
 
