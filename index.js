@@ -490,20 +490,11 @@ module.exports= function (opts,cb)
                     {
                        if (err)
                          cursor.trigger.error(err); 
-                       else
-                       if (items.next)
-                         items.next();
-                       else
-                         _success();
                     });
                 })
                 .consumed(_consumed)
                 .error(_error)
-                .end(function ()
-                     {
-                         if (!found)
-                           _success();
-                     });
+                .end(_success);
 
                 return p;
             };
@@ -562,11 +553,6 @@ module.exports= function (opts,cb)
                        {
                           if (err)
                             cursor.trigger.error(err);
-                          else
-                          if (items.next)
-                            items.next();    
-                          else
-                            _success();
                        }); 
                     };
 
@@ -575,11 +561,7 @@ module.exports= function (opts,cb)
                      .results(_updateItems)
                      .consumed(_consumed)
                      .error(_error)
-                     .end(function ()
-                     {
-                         if (!found)
-                           _success();
-                     });
+                     .end(_success);
 
                 return p;
             };
