@@ -483,8 +483,7 @@ module.exports= function (opts,cb)
 
                 cursor.results(function (items)
                 {
-                    if (items.length)
-                      found= true;
+                    found= true;
 
                     async.forEach(items,_deleteItem,
                     function (err)
@@ -556,8 +555,7 @@ module.exports= function (opts,cb)
                     },
                     _updateItems= function (items)
                     {
-                       if (items.length)
-                         found= true;
+                       found= true;
 
                        async.forEach(items,_updateItem,
                        function (err)
