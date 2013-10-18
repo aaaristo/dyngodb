@@ -169,7 +169,7 @@ module.exports= function (opts,cb)
 
             table.save= function (_obj)
             {
-                var objs= Array.isArray(_obj) ? _obj : [_obj],
+                var objs= _obj ? (Array.isArray(_obj) ? _obj : [_obj]) : [],
                     consume= {},
                     p= dyn.promise(null,'updatedsinceread','consumed'), found= false;
 
