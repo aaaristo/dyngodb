@@ -327,7 +327,7 @@ module.exports= function (opts,cb)
 
                                _index(obj); // index after $ fields are set so they are indexable too
 
-                               ops.push({ op: 'put', item: obj, omit: _omit });
+                               ops.unshift({ op: 'put', item: obj, omit: _omit }); // let the aggregate op came first of "contained" objects, so that the aggrgate version protects the rest
                             },
                             _mput= function (gops,done)
                             {
