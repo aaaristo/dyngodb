@@ -458,5 +458,5 @@ dyngodb
 Your help is highly appreciated: we need to test / discuss / fix code, performance, roadmap
 
 
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/aaaristo/dyngodb/trend.png)](https://bitdeli.com/aaaristo "Bitdeli Badge")
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/aaaristo/dyngodb/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
 
