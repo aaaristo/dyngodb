@@ -397,17 +397,17 @@ dyngodb --local
 
 Using the *.dyngorc* file you can issue some commands before using the console (e.g. ensureIndex)
 
-### standard input
+### standard input (argv by [optimist](https://github.com/substack/node-optimist))
 
 *commands.txt*
 <pre>
-db.test.save([{ name: 'John' },{ name: 'Jane' }])
+db.test.save([{ name: argv.somename },{ name: 'Jane' }])
 db.test.save([{ name: 'John' },{ name: 'Jane' }])
 db.test.save([{ name: 'John' },{ name: 'Jane' }])
 </pre>
 
 <pre>
-dyngodb &lt; commands.txt
+dyngodb --somename Jake  &lt; commands.txt
 </pre>
 
 ### Streams (for raw dynamodb items)
