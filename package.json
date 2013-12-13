@@ -22,10 +22,10 @@
     "colors": "~0.6.1",
     "ret": "~0.1.6",
     "querystring": "~0.2.0",
-    "lazy": "~1.0.11",
     "optimist": "~0.6.0",
     "csv": "~0.3.6",
-    "node-zip": "~1.0.1"
+    "node-zip": "~1.0.1",
+    "byline": "~4.1.1"
   },
   "repository": {
     "type": "git",

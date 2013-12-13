@@ -7,7 +7,7 @@ var dyngo= require('./index'),
     fs= require('fs'),
     csv = require('csv'),
     xlsx = require('./lib/xlsx'),
-    lazy= require('lazy'),
+    byline= require('byline'),
     util= require('util'),
     readline= require('readline'),
     _= require('underscore'),
@@ -221,9 +221,10 @@ const _json= function (path,content)
       },
       _doinput= function (db,cb)
       {
-         var _lines= [];
+         var _lines= [],
+             _stdin= byline(process.stdin);
 
-         process.stdin.on('end',_dobatch(db,_lines,
+         _stdin.on('end',_dobatch(db,_lines,
          function (err)
          {
               if (err)
@@ -235,7 +236,10 @@ const _json= function (path,content)
                 process.exit(0); 
          }));
 
-         new lazy(process.stdin).lines.forEach(function (l) { if (l) _lines.push(l.toString('utf8')); });
+         _stdin.on('data', function(line)
+         {
+           _lines.push(line.toString('utf8'));
+         });
 
          process.stdin.resume();
 
@@ -253,11 +257,11 @@ const _json= function (path,content)
                  if (fs.existsSync(f))  
                  {
                     console.log(('executing '+f+'...').green);
-                    var rstream= fs.createReadStream(f);
+                    var rstream= byline(fs.createReadStream(f, { encoding: 'utf8' }));
 
                     rstream.on('end',_dobatch(db,_lines,done));
 
-                    new lazy(rstream).lines.forEach(function (l) { _lines.push(l.toString('utf8')); });
+                    rstream.on('data',function (l) { _lines.push(l); });
                  }
                  else
                     done();
