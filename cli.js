@@ -7,7 +7,7 @@ var dyngo= require('./index'),
     fs= require('fs'),
     csv = require('csv'),
     xlsx = require('./lib/xlsx'),
-    byline= require('byline'),
+    carrier= require('carrier'),
     util= require('util'),
     readline= require('readline'),
     _= require('underscore'),
@@ -221,10 +221,14 @@ const _json= function (path,content)
       },
       _doinput= function (db,cb)
       {
-         var _lines= [],
-             _stdin= byline(process.stdin);
+         var _lines= [];
 
-         _stdin.on('end',_dobatch(db,_lines,
+         carrier.carry(process.stdin, function (line)
+         {
+                _lines.push(line);
+         },'utf8');
+
+         process.stdin.on('end',_dobatch(db,_lines,
          function (err)
          {
               if (err)
@@ -235,11 +239,6 @@ const _json= function (path,content)
               else
                 process.exit(0); 
          }));
-
-         _stdin.on('data', function(line)
-         {
-           _lines.push(line.toString('utf8'));
-         });
 
          process.stdin.resume();
 
@@ -257,11 +256,14 @@ const _json= function (path,content)
                  if (fs.existsSync(f))  
                  {
                     console.log(('executing '+f+'...').green);
-                    var rstream= byline(fs.createReadStream(f, { encoding: 'utf8' }));
+                    var rstream= fs.createReadStream(f, { encoding: 'utf8' });
 
                     rstream.on('end',_dobatch(db,_lines,done));
 
-                    rstream.on('data',function (l) { _lines.push(l); });
+                    carrier.carry(rstream,function (line)
+                    {
+                        _lines.push(line);
+                    });
                  }
                  else
                     done();
