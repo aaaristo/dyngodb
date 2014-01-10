@@ -228,17 +228,23 @@ const _json= function (path,content)
                 _lines.push(line);
          },'utf8');
 
-         process.stdin.on('end',_dobatch(db,_lines,
-         function (err)
+         process.stdin.on('end',function ()
          {
-              if (err)
-              {
-                console.log(err.message.red,err.stack);
-                process.exit(1); 
-              }
-              else
-                process.exit(0); 
-         }));
+             process.nextTick(function ()
+             {
+                 _dobatch(db,_lines,
+                 function (err)
+                 {
+                      if (err)
+                      {
+                        console.log(err.message.red,err.stack);
+                        process.exit(1); 
+                      }
+                      else
+                        process.exit(0); 
+                 })();
+             });
+         });
 
          process.stdin.resume();
 
@@ -258,7 +264,13 @@ const _json= function (path,content)
                     console.log(('executing '+f+'...').green);
                     var rstream= fs.createReadStream(f, { encoding: 'utf8' });
 
-                    rstream.on('end',_dobatch(db,_lines,done));
+                    rstream.on('end',function ()
+                    {
+                       process.nextTick(function ()
+                       { 
+                        _dobatch(db,_lines,done)();
+                       });
+                    });
 
                     carrier.carry(rstream,function (line)
                     {
