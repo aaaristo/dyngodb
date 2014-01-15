@@ -220,7 +220,7 @@ module.exports= function (opts,cb)
                             {
                                var _keys= _.keys(obj),
                                    _omit= ['$old'],
-                                   diffs= diff(obj.$old || {},_.omit(obj,'$old'));
+                                   diffs= diff(_.omit(obj.$old,['$old']) || {},_.omit(obj,['$old']));
 
                                if (!diffs
                                     ||(obj.$old || {$version: 0}).$version<obj.$version) return;
