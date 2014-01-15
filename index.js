@@ -235,7 +235,7 @@ module.exports= function (opts,cb)
                                     {
                                        var desc= obj[key];
 
-                                       if (desc==null)
+                                       if (desc==null||_.keys(desc).length==0)
                                          _omit.push(key);
                                        else
                                        if (Array.isArray(desc))
