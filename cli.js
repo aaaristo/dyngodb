@@ -13,6 +13,7 @@ var dyngo= require('./index'),
     _= require('underscore'),
     path= require('path').join,
     colors = require('colors'),
+    JSOG = require('jsog'),
     AWS = require('aws-sdk');
 
 var argv = require('optimist').argv;
@@ -28,6 +29,23 @@ const _json= function (path,content)
               else
               {
                 fs.writeFileSync(path,JSON.stringify(content,null,2),'utf8')
+                return { success: function (fn) { process.nextTick(fn); } };
+              }
+          }
+          catch (ex)
+          {
+              console.log((ex+'').red);
+          }
+      },
+      _jsog= function (path,content)
+      {
+          try
+          {
+              if (!content)
+                return JSOG.parse(fs.readFileSync(path,'utf8'));
+              else
+              {
+                fs.writeFileSync(path,JSOG.stringify(content),'utf8')
                 return { success: function (fn) { process.nextTick(fn); } };
               }
           }
@@ -167,7 +185,7 @@ const _json= function (path,content)
       _eval= function (cmd,db,last)
       {
         var __csv= function (path, opts, cols, tfnc) { var args= Array.prototype.slice.apply(arguments); args.unshift(db._dyn); return _csv.apply(null,args); };
-        return eval('(function (db,last,_,json,csv,xlsx,argv){ return '+cmd+'; })')(db,last,_,_json,__csv,_xlsx,argv);
+        return eval('(function (db,last,_,json,jsog,csv,xlsx,argv){ return '+cmd+'; })')(db,last,_,_json,_jsog,__csv,_xlsx,argv);
       },
       _dobatch= function (db,lines,done)
       {
