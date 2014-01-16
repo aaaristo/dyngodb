@@ -452,7 +452,7 @@ dyngodb
 > db.mytbl.indexes[0].modify(1024,1024)
 </pre>
 
-### Export / import
+### Export / import (todo: stream)
 
 Export:
 <pre>
