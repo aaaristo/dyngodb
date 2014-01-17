@@ -32,5 +32,8 @@
     "type": "git",
     "url": "http://github.com/aaaristo/dyngodb.git"
   },
-  "preferGlobal": true
+  "preferGlobal": true,
+  "devDependencies": {
+    "chai": "~1.8.1"
+  }
 }
