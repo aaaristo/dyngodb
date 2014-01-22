@@ -2,6 +2,7 @@ var dyno= require('./lib/dyn.js'),
     diff = require('deep-diff').diff,
     uuid= require('node-uuid').v4,
     _= require('underscore'),
+    JSOG= require('jsog'),
     async= require('async'); 
 
 var _parser= require('./lib/parser'), 
@@ -56,18 +57,19 @@ module.exports= function (opts,cb)
 
    db.cleanup= function (obj)
    {
-      var p= dyn.promise('clean');
+      var p= dyn.promise('clean'),
+          clone= JSOG.encode(obj);
 
-      _deep.clone(obj,function (clone)
+      process.nextTick(function ()
       {
-          _deep.traverse(clone,
+          _traverse(clone,
           function (key, value, obj)
           {
              if (key.indexOf('$')==0&&key!='$id')
                delete obj[key]; 
           });
 
-          p.trigger.clean(clone);
+          p.trigger.clean(JSOG.decode(clone));
       });
 
       return p;

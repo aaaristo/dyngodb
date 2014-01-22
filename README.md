@@ -452,6 +452,23 @@ dyngodb
 > db.mytbl.indexes[0].modify(1024,1024)
 </pre>
 
+### Export / import (todo: stream)
+
+Export:
+<pre>
+dyngodb
+> db.mytbl.find()
+> db.cleanup(last).clean(function (d) { jsog('export.json',d); });
+</pre>
+
+Import:
+<pre>
+dyngodb
+> db.mytbl.save(jsog('esport.json'));
+</pre>
+
+You can use either json or [jsog](https://github.com/jsog/jsog) function the only difference is that the jsog function
+is able to serialize cyrcular object graphs.
 
 ### Help wanted!
 
