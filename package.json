@@ -1,7 +1,7 @@
 {
   "name": "dyngodb",
   "description": "An experiment (pre-alpha) to get a MongoDB like interface in front of DynamoDB",
-  "version": "0.1.63",
+  "version": "0.1.64",
   "main": "Gruntfile.js",
   "bin": {
     "dyngodb": "./cli.js"
@@ -25,8 +25,7 @@
     "optimist": "~0.6.0",
     "csv": "~0.3.6",
     "node-zip": "~1.0.1",
-    "carrier": "~0.1.13",
-    "jsog": "~1.0.4"
+    "carrier": "~0.1.13"
   },
   "repository": {
     "type": "git",

@@ -13,7 +13,7 @@ var dyngo= require('./index'),
     _= require('underscore'),
     path= require('path').join,
     colors = require('colors'),
-    JSOG = require('jsog'),
+    JSOG = require('./lib/JSOG'),
     AWS = require('aws-sdk');
 
 var argv = require('optimist').argv;

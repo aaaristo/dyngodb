@@ -2,7 +2,7 @@ var dyno= require('./lib/dyn.js'),
     diff = require('deep-diff').diff,
     uuid= require('node-uuid').v4,
     _= require('underscore'),
-    JSOG= require('jsog'),
+    JSOG= require('./lib/JSOG'),
     async= require('async'); 
 
 var _parser= require('./lib/parser'), 
