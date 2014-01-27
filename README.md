@@ -66,7 +66,8 @@ THEN
 ## What dyngodb actually does
 
 * Basic find() support (basic operators, no $all, $and $or..., some projection capabilities):
-  finds are implemented via 3 components: 
+  finds are implemented via 3 components:
+
       * parser: parses the query and produce a "query" object that is 
                 used to track the state of the query from its beginning to the end.
 
