@@ -339,7 +339,7 @@ module.exports= function (opts,cb)
                                {
                                   var tops= gops[_table];
 
-                                  (tops.index ? async.forEach : async.forEachSeries)(tops, // forEachSeries: when deleting elements from array i need deletes of old item $pos done before new item $pos put
+                                  async.forEachSeries(tops, // forEachSeries: when deleting elements from array i need deletes of old item $pos done before new item $pos put
                                   function (op,done)
                                   {
                                      var tab= dyn.table(_table),
