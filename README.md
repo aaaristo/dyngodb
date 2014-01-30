@@ -465,7 +465,7 @@ dyngodb
 Import:
 <pre>
 dyngodb
-> db.mytbl.save(jsog('esport.json'));
+> db.mytbl.save(jsog('export.json'));
 </pre>
 
 You can use either json or [jsog](https://github.com/jsog/jsog) function the only difference is that the jsog function
