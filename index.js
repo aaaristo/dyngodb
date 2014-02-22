@@ -12,7 +12,11 @@ var _parser= require('./lib/parser'),
     _deep= require('./lib/deep'),
     _modify= require('./lib/capacity');
 
-const _traverse= function (o, fn)
+const _nu= function (v)
+      {
+         return typeof v!='undefined';
+      }, 
+      _traverse= function (o, fn)
       {
          Object.keys(o).forEach(function (i)
          {
@@ -37,18 +41,20 @@ const _traverse= function (o, fn)
 
 module.exports= function (opts,cb)
 {
-   
+   var defaults= { hints: true }; 
+
    if (!cb)
    {
      cb= opts;
-     opts= {};
+     opts= defaults;
    }
 
-   opts= opts || {};
+   opts= opts || defaults;
+   opts= _.defaults(opts,defaults);
 
    var dyn= dyno(opts.dynamo),
        finder= _finder(dyn),
-       parser= _parser(dyn),
+       parser= _parser(dyn,opts),
        db= { _dyn: dyn },
        _alias= function (table)
        {
@@ -232,6 +238,18 @@ module.exports= function (opts,cb)
 
                                _keys.forEach(function (key)
                                {
+                                    if (key.indexOf('$$$')==0&&!_nu(obj[key.substring(3)]))
+                                    {
+                                      _omit.push(key);
+                                      return;
+                                    }
+                                    else
+                                    if (key.indexOf('$$')==0&&!_nu(obj[key.substring(2)]))
+                                    {
+                                      _omit.push(key);
+                                      return;
+                                    }
+                                    
                                     var type= typeof obj[key];
 
                                     if (type=='object'&&!_.contains(['$old','$refs'],key))
@@ -362,7 +380,7 @@ module.exports= function (opts,cb)
                                                  done();
                                              });
                                           },
-                                          { expected: obj.$old ? { $version: obj.$old.$version } : undefined })
+                                          { expected: obj.$old&&_nu(obj.$old.$version) ? { $version: obj.$old.$version } : undefined })
                                           .consumed(_collect(consume))
                                           .error(done);
                                      else
