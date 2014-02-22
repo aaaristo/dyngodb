@@ -1,6 +1,7 @@
 var should= require('chai').should(),
     assert= require('chai').assert,
     AWS = require('aws-sdk'),
+    _= require('underscore'),
     dyngo=  require('../index.js');
 
 const noerr= function (done)
@@ -110,6 +111,116 @@ describe('database',function ()
                        })
                        .error(_noerr);
            });
+
+           it('Can insert an object with a child object, and then change the type of the child', function (done)
+           {
+                var _noerr= noerr(done);
+
+                var par= { somedata: 'parentrchild', child: { somedata: 'child' } };
+
+                db.test.save(par)
+                       .success(function ()
+                       {
+                             par.child= 'child';
+
+                             db.test.save(par)
+                                    .success(function ()
+                                    {
+                                         db.test.findOne({ $id: par.$id })
+                                                .result(function (obj)
+                                                {
+                                                      obj.somedata.should.equal('parentrchild'); 
+                                                      obj.child.should.equal('child');
+                                                      done();
+                                                })
+                                                .error(_noerr);
+                                    })
+                                    .error(_noerr);
+                       })
+                       .error(_noerr);
+           });
+
+           it('Can insert an object with a child object array, and have it back', function (done)
+           {
+                var _noerr= noerr(done);
+
+                db.test.save({ somedata: 'parentarr', childs: [{ somedata: 'child1' },{ somedata: 'child2' },{ somedata: 'child3' }] })
+                       .success(function ()
+                       {
+                             db.test.findOne({ somedata: 'parentarr' })
+                                    .result(function (obj)
+                                    {
+                                          obj.somedata.should.equal('parentarr'); 
+                                          obj.childs.length.should.equal(3); 
+                                           _.pluck(obj.childs,'somedata').should.contain('child1');
+                                           _.pluck(obj.childs,'somedata').should.contain('child2');
+                                           _.pluck(obj.childs,'somedata').should.contain('child3');
+                                          done();
+                                    })
+                                    .error(_noerr);
+                       })
+                       .error(_noerr);
+           });
+
+           it('Can insert an object with a child object array, and then remove the child object array', function (done)
+           {
+                var _noerr= noerr(done);
+
+                var par= { somedata: 'parentrarr', childs: [{ somedata: 'child1' },{ somedata: 'child2' },{ somedata: 'child3' }] };
+
+                db.test.save(par)
+                       .success(function ()
+                       {
+                             delete par.childs;
+
+                             db.test.save(par)
+                                    .success(function ()
+                                    {
+                                         db.test.findOne({ $id: par.$id })
+                                                .result(function (obj)
+                                                {
+                                                      obj.somedata.should.equal('parentrarr'); 
+                                                      should.not.exist(obj.childs); 
+                                                      done();
+                                                })
+                                                .error(_noerr);
+                                    })
+                                    .error(_noerr);
+                       })
+                       .error(_noerr);
+           });
+
+           it('Can insert an object with a child object array, and then change the type of the child array', function (done)
+           {
+                var _noerr= noerr(done);
+
+                var par= { somedata: 'parentcarr', childs: [{ somedata: 'child1' },{ somedata: 'child2' },{ somedata: 'child3' }] };
+
+                db.test.save(par)
+                       .success(function ()
+                       {
+                             par.childs= ['child1','child2','child3'];
+
+                             db.test.save(par)
+                                    .success(function ()
+                                    {
+                                         db.test.findOne({ $id: par.$id })
+                                                .result(function (obj)
+                                                {
+                                                      obj.somedata.should.equal('parentcarr'); 
+                                                      obj.childs.length.should.equal(3); 
+                                                      obj.childs.should.contain('child1');
+                                                      obj.childs.should.contain('child2');
+                                                      obj.childs.should.contain('child3');
+                                                      done();
+                                                })
+                                                .error(_noerr);
+                                    })
+                                    .error(_noerr);
+                       })
+                       .error(_noerr);
+           });
+
        });
 
 });
