@@ -34,6 +34,16 @@ describe('database',function ()
           done();
        });
 
+       it('test table should be empty', function (done)
+       {
+          db.test.find().results(function (items)
+          {
+              items.length.should.equal(0);
+              done();
+          })
+          .error(noerr(done));
+       });
+
        describe('save',function ()
        {
            it('Can insert a new object, and then find it', function (done)

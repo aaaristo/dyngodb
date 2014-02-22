@@ -16,6 +16,14 @@ const _nu= function (v)
       {
          return typeof v!='undefined';
       }, 
+      _isobject= function (v)
+      {
+          return typeof v=='object'&&!Array.isArray(v);
+      },
+      _isobjectarr= function (v)
+      {
+          return typeof v=='object'&&Array.isArray(v)&&v.length>0&&typeof v[0]=='object';
+      },
       _traverse= function (o, fn)
       {
          Object.keys(o).forEach(function (i)
@@ -238,13 +246,13 @@ module.exports= function (opts,cb)
 
                                _keys.forEach(function (key)
                                {
-                                    if (key.indexOf('$$$')==0&&!_nu(obj[key.substring(3)]))
+                                    if (key.indexOf('$$$')==0&&!_isobjectarr(obj[key.substring(3)]))
                                     {
                                       _omit.push(key);
                                       return;
                                     }
                                     else
-                                    if (key.indexOf('$$')==0&&!_nu(obj[key.substring(2)]))
+                                    if (key.indexOf('$$')==0&&!_isobject(obj[key.substring(2)]))
                                     {
                                       _omit.push(key);
                                       return;
