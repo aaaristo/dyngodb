@@ -162,11 +162,41 @@ describe('database',function ()
                        .error(_noerr);
            });
 
+           it('Can insert an object with a child object array, and then update the parent without loosing the child object array', function (done)
+           {
+                var _noerr= noerr(done);
+
+                var par= { somedata: 'parentrarrupd', childs: [{ somedata: 'child1' },{ somedata: 'child2' },{ somedata: 'child3' }] };
+
+                db.test.save(par)
+                       .success(function ()
+                       {
+                             db.test.save(par)
+                                    .success(function ()
+                                    {
+                                         db.test.findOne({ $id: par.$id })
+                                                .result(function (obj)
+                                                {
+                                                      obj.somedata.should.equal('parentrarrupd'); 
+                                                      should.exist(obj.childs); 
+                                                      obj.childs.length.should.equal(3); 
+                                                       _.pluck(obj.childs,'somedata').should.contain('child1');
+                                                       _.pluck(obj.childs,'somedata').should.contain('child2');
+                                                       _.pluck(obj.childs,'somedata').should.contain('child3');
+                                                      done();
+                                                })
+                                                .error(_noerr);
+                                    })
+                                    .error(_noerr);
+                       })
+                       .error(_noerr);
+           });
+
            it('Can insert an object with a child object array, and then remove the child object array', function (done)
            {
                 var _noerr= noerr(done);
 
-                var par= { somedata: 'parentrarr', childs: [{ somedata: 'child1' },{ somedata: 'child2' },{ somedata: 'child3' }] };
+                var par= { somedata: 'parentrarrrm', childs: [{ somedata: 'child1' },{ somedata: 'child2' },{ somedata: 'child3' }] };
 
                 db.test.save(par)
                        .success(function ()
@@ -179,7 +209,7 @@ describe('database',function ()
                                          db.test.findOne({ $id: par.$id })
                                                 .result(function (obj)
                                                 {
-                                                      obj.somedata.should.equal('parentrarr'); 
+                                                      obj.somedata.should.equal('parentrarrrm'); 
                                                       should.not.exist(obj.childs); 
                                                       done();
                                                 })
