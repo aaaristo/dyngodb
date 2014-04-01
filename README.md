@@ -233,6 +233,10 @@ So when Session 2 tries to save the object it tries to save it
 [expecting](http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html#DDB-PutItem-request-Expected) the item to have $old.$version in the table and it fails
 because Session 1 already incremented it.
 
+***note:*** when you get the above error you should reread the object you where trying to save,
+and eventually retry your updates, any other save operation on this object will result in bogus
+responses.
+
 ### Arrays
 
 Actually dyngodb is pretty incoherent about arrays, infact it has two kinds of array persistence: 
