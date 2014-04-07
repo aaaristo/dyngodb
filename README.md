@@ -95,7 +95,7 @@ THEN
        (actually with some addons $id, $version...) when you query the data out:
 
        db.test.find({ name: 'John' }) => will SCAN for name: 'John' return the first object, detects $$wife
-       ($$ for an object, $$$ for an [array](#arrays)) and get (getItem) the second object. Those meta-attributes are keeped
+       ($$ for an object, $$$ for an [array](#arrays)) and get (getItem) the second object. Those meta-attributes are kept
        in the result for later use in save().
 
 * Basic update() support: $set, $unset (should add $push and $pull)
