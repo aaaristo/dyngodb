@@ -2,14 +2,13 @@ var dyno= require('./lib/dyn.js'),
     diff = require('deep-diff').diff,
     uuid= require('node-uuid').v4,
     _= require('underscore'),
-    JSOG= require('./lib/JSOG'),
+    cclone= require('circularclone'),
     async= require('async'); 
 
 var _parser= require('./lib/parser'), 
     _finder= require('./lib/finder'),
     _refiner= require('./lib/refiner'),
     _index= require('./lib/indexer'),
-    _deep= require('./lib/deep'),
     _modify= require('./lib/capacity');
 
 const _nu= function (v)
@@ -23,15 +22,6 @@ const _nu= function (v)
       _isobjectarr= function (v)
       {
           return typeof v=='object'&&Array.isArray(v)&&v.length>0&&typeof v[0]=='object';
-      },
-      _traverse= function (o, fn)
-      {
-         Object.keys(o).forEach(function (i)
-         {
-             fn.apply(null,[i,o[i],o]);
-             if (typeof (o[i])=='object')
-               _traverse(o[i],fn);
-         });
       },
       _collect= function (consume)
       {
@@ -71,19 +61,17 @@ module.exports= function (opts,cb)
 
    db.cleanup= function (obj)
    {
-      var p= dyn.promise('clean'),
-          clone= JSOG.encode(obj);
+      var p= dyn.promise('clean');
 
       process.nextTick(function ()
       {
-          _traverse(clone,
-          function (key, value, obj)
+          p.trigger.clean(cclone(obj,function (key,value)
           {
-             if (key.indexOf('$')==0&&key!='$id')
-               delete obj[key]; 
-          });
-
-          p.trigger.clean(JSOG.decode(clone));
+             if (key.indexOf&&key.indexOf('$')==0&&key!='$id')
+               return undefined; 
+             else
+               return value;
+          }));
       });
 
       return p;
@@ -388,11 +376,8 @@ module.exports= function (opts,cb)
                                          tab.put(_.omit(obj,op.omit),
                                           function ()
                                           {
-                                             _deep.clone(_.omit(obj,'$old'),function (clone)
-                                             {
-                                                 obj.$old= clone;
-                                                 done();
-                                             });
+                                             obj.$old= cclone(_.omit(obj,'$old'));
+                                             done();
                                           },
                                           { expected: obj.$old&&_nu(obj.$old.$version) ? { $version: obj.$old.$version } : undefined })
                                           .consumed(_collect(consume))

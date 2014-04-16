@@ -463,17 +463,17 @@ Export:
 <pre>
 dyngodb
 > db.mytbl.find()
-> db.cleanup(last).clean(function (d) { jsog('export.json',d); });
+> db.cleanup(last).clean(function (d) { gson('export.gson',d); });
 </pre>
 
 Import:
 <pre>
 dyngodb
-> db.mytbl.save(jsog('export.json'));
+> db.mytbl.save(gson('export.gson'));
 </pre>
 
-You can use either json or [jsog](https://github.com/jsog/jsog) function the only difference is that the jsog function
-is able to serialize cyrcular object graphs.
+You can use either json or [gson](https://github.com/aaaristo/GSON) function the only difference is that the gson function
+is able to serialize cyrcular object graphs in a non-recursive way.
 
 ### Help wanted!
 
