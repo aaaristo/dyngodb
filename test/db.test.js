@@ -251,6 +251,26 @@ describe('database',function ()
                        .error(_noerr);
            });
 
+           it('supports Date objects', function (done)
+           {
+                var _noerr= noerr(done), d= new Date();
+
+                var par= { val: d };
+
+                db.test.save(par)
+                       .success(function ()
+                       {
+                             db.test.findOne({ $id: par.$id })
+                                    .result(function (obj)
+                                    {
+                                          should.exist(obj.val);
+                                          obj.val.should.equal(d.toISOString()); 
+                                          done();
+                                    })
+                                    .error(_noerr);
+                       })
+                       .error(_noerr);
+           });
        });
 
 });

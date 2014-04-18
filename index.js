@@ -258,7 +258,13 @@ module.exports= function (opts,cb)
                                     {
                                        var desc= obj[key];
 
-                                       if (desc==null||_.keys(desc).length==0)
+                                       if (desc==null)
+                                         _omit.push(key);
+                                       else
+                                       if (desc instanceof Date)
+                                       { /* let dyn convert */ }
+                                       else
+                                       if (_.keys(desc).length==0)
                                          _omit.push(key);
                                        else
                                        if (Array.isArray(desc))
