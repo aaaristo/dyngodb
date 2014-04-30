@@ -98,7 +98,7 @@ describe('database',function ()
                              db.test.save(par)
                                     .success(function ()
                                     {
-                                         db.test.findOne({ $id: par.$id })
+                                         db.test.findOne({ _id: par._id })
                                                 .result(function (obj)
                                                 {
                                                       obj.somedata.should.equal('parentrchild'); 
@@ -126,7 +126,7 @@ describe('database',function ()
                              db.test.save(par)
                                     .success(function ()
                                     {
-                                         db.test.findOne({ $id: par.$id })
+                                         db.test.findOne({ _id: par._id })
                                                 .result(function (obj)
                                                 {
                                                       obj.somedata.should.equal('parentrchild'); 
@@ -174,7 +174,7 @@ describe('database',function ()
                              db.test.save(par)
                                     .success(function ()
                                     {
-                                         db.test.findOne({ $id: par.$id })
+                                         db.test.findOne({ _id: par._id })
                                                 .result(function (obj)
                                                 {
                                                       obj.somedata.should.equal('parentrarrupd'); 
@@ -206,7 +206,7 @@ describe('database',function ()
                              db.test.save(par)
                                     .success(function ()
                                     {
-                                         db.test.findOne({ $id: par.$id })
+                                         db.test.findOne({ _id: par._id })
                                                 .result(function (obj)
                                                 {
                                                       obj.somedata.should.equal('parentrarrrm'); 
@@ -234,7 +234,7 @@ describe('database',function ()
                              db.test.save(par)
                                     .success(function ()
                                     {
-                                         db.test.findOne({ $id: par.$id })
+                                         db.test.findOne({ _id: par._id })
                                                 .result(function (obj)
                                                 {
                                                       obj.somedata.should.equal('parentcarr'); 
@@ -260,7 +260,7 @@ describe('database',function ()
                 db.test.save(par)
                        .success(function ()
                        {
-                             db.test.findOne({ $id: par.$id })
+                             db.test.findOne({ _id: par._id })
                                     .result(function (obj)
                                     {
                                           should.exist(obj.val);

@@ -417,7 +417,7 @@ var args= [function (err,db)
                      },
                      _print= function (obj,cb)
                      {
-                         if (obj.$old||(obj[0]&&obj[0].$old))
+                         if (obj._old||(obj[0]&&obj[0]._old))
                              db.cleanup(obj).clean(function (obj)
                              {
                                 console.log(util.inspect(obj,{ depth: null }));
