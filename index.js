@@ -847,6 +847,8 @@ var dyngo= module.exports= function (opts,cb)
                                       },
                                       _complete= function (cb)
                                       {
+                                          var finished= _.after(2,cb);
+
                                           dyn.table(db.txTable._dynamo.TableName)
                                              .hash('_id',tx._id)
                                              .range('_item','target::','BEGINS_WITH')
@@ -883,13 +885,15 @@ var dyngo= module.exports= function (opts,cb)
                                                  {
                                                      if (err)
                                                        p.trigger.error(err); 
+                                                     else
+                                                       finished();
                                                  });
                                               },
                                               { attrs: ['_id','_item','_txOp'],
                                            consistent: true })
                                              .error(p.trigger.error)
                                              .consumed(p.trigger.consumed)
-                                             .end(cb);
+                                             .end(finished);
                                       },
                                       _clean= function (cb)
                                       {
@@ -932,7 +936,21 @@ var dyngo= module.exports= function (opts,cb)
                                   var p= dyn.promise('rolledback',null,'consumed'),
                                       _rollback= function (cb)
                                       {
-                                          var finished= false;
+                                          var finished= _.after(2,function ()
+                                              {
+                                                  dyn.table(db.txTable._dynamo.TableName)
+                                                     .hash('_id',tx._id)
+                                                     .range('_item','_')
+                                                     .updateItem({ update: { state: { action: 'PUT', value: 'rolledback' } },
+                                                                 expected: { state: 'pending' } },
+                                                     function ()
+                                                     {
+                                                        tx.state= 'rolledback';
+                                                        cb();   
+                                                     })
+                                                     .consumed(p.trigger.consumed)
+                                                     .error(p.trigger.error);
+                                              });
 
                                           dyn.table(db.txTable._dynamo.TableName)
                                              .hash('_id',tx._id)
@@ -1006,34 +1024,17 @@ var dyngo= module.exports= function (opts,cb)
                                                  },
                                                  function (err)
                                                  {
-                                                     finished= true;
-
                                                      if (err)
                                                        p.trigger.error(err); 
+                                                     else
+                                                       finished();
                                                  });
                                               },
                                               { attrs: ['_id','_item','_txOp'],
                                            consistent: true })
                                              .error(p.trigger.error)
                                              .consumed(p.trigger.consumed)
-                                             .end(function setstate()
-                                           {
-                                                if (finished)
-                                                  dyn.table(db.txTable._dynamo.TableName)
-                                                     .hash('_id',tx._id)
-                                                     .range('_item','_')
-                                                     .updateItem({ update: { state: { action: 'PUT', value: 'rolledback' } },
-                                                                 expected: { state: 'pending' } },
-                                                     function ()
-                                                     {
-                                                        tx.state= 'rolledback';
-                                                        cb();   
-                                                     })
-                                                     .consumed(p.trigger.consumed)
-                                                     .error(p.trigger.error);
-                                                 else 
-                                                  setTimeout(setstate,10);
-                                           });
+                                             .end(finished);
                                       };
 
                                   if (tx.state=='pending')
