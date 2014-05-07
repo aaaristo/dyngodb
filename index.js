@@ -37,7 +37,7 @@ const _nu= function (v)
           };
       };
 
-module.exports= function (opts,cb)
+var dyngo= module.exports= function (opts,cb)
 {
    var defaults= { hints: true }; 
 
@@ -50,10 +50,10 @@ module.exports= function (opts,cb)
    opts= opts || defaults;
    opts= _.defaults(opts,defaults);
 
-   var dyn= dyno(opts.dynamo),
+   var dyn= dyno(opts.dynamo,_.extend({},opts.tx,{ txTable: opts.txTable })),
        finder= _finder(dyn),
        parser= _parser(dyn,opts),
-       db= { _dyn: dyn },
+       db= _.extend({ _dyn: dyn },opts.tx,{ txTable: opts.txTable }),
        _alias= function (table)
        {
           return (opts.tables || {} )[table] || table;
@@ -744,6 +744,329 @@ module.exports= function (opts,cb)
            });
 
       return p;
+   };
+
+   db.ensureTransactionTable= function (opts)
+   { 
+      opts= _.defaults(opts || {},{ name: 'dyngo-transaction-table' });
+      var p= dyn.promise(),
+          _success= function ()
+          {
+              dyn.describeTable(opts.name,function (err,data)
+              {
+                  if (!err)
+                  {
+                    db.txTable= { _dynamo: data.Table, indexes: [] };
+                    p.trigger.success();
+                  }
+                  else
+                    p.trigger.error(err);
+              });
+          };
+
+        console.log('This may take a while...'.yellow);
+
+        dyn.table(opts.name)
+           .hash('_id','S')
+           .range('_item','S')
+           .create(function check()
+           {
+              dyn.table(opts.name)
+                 .hash('_id','xx')
+                 .query(function ()
+              {
+                 _success();
+              })
+              .error(function (err)
+              {
+                 if (err.code=='ResourceNotFoundException')
+                   setTimeout(check,5000);
+                 else
+                 if (err.code=='notfound')
+                   _success();
+                 else
+                   p.trigger.error(err);
+              });
+           })
+           .error(function (err)
+           {
+               if (err.code=='ResourceInUseException')
+                 _success();
+               else
+                 p.trigger.error(err);
+           });
+
+      return p;
+   };
+
+   db.transaction= function (txOpts)
+   {
+         var p= dyn.promise('transaction',null,'consumed');
+
+         process.nextTick(function ()
+         {
+             if (!db.txTable)
+             {
+               p.trigger.error(new Error('no transaction table defined'));
+               return;
+             }
+ 
+             var tab= dyn.table(db.txTable._dynamo.TableName),
+                 init= function (tx)
+                 {               
+                     tab.hash('_id',tx._id)
+                        .range('_item','_')
+                        .put(tx,function ()
+                        {
+                           dyngo(_.extend({ tx: tx, txTable: db.txTable },opts,txOpts),
+                           function (err,tx)
+                           {
+                              if (err)
+                              {  
+                                p.trigger.error(err);
+                                return;
+                              }
+
+                              tx.commit= function ()
+                              {
+                                  var p= dyn.promise('committed',null,'consumed'),
+                                      _commit= function (cb)
+                                      {
+                                          dyn.table(db.txTable._dynamo.TableName)
+                                             .hash('_id',tx._id)
+                                             .range('_item','_')
+                                             .updateItem({ update: { state: { action: 'PUT', value: 'committed' } },
+                                                         expected: { state: 'pending' } },
+                                             function ()
+                                             {
+                                                tx.state= 'committed';
+                                                cb();   
+                                             })
+                                             .consumed(p.trigger.consumed)
+                                             .error(p.trigger.error);
+                                      },
+                                      _complete= function (cb)
+                                      {
+                                          dyn.table(db.txTable._dynamo.TableName)
+                                             .hash('_id',tx._id)
+                                             .range('_item','target::','BEGINS_WITH')
+                                             .query(function (items)
+                                              {
+                                                 async.forEach(items,
+                                                 function (item,done)
+                                                 {
+                                                     var _item= item._item.split('::'),
+                                                         table= _item[1],
+                                                         hash= { attr: _item[2], value: _item[3] },
+                                                         range= { attr: _item[4], value: _item[4]=='_pos' ? +_item[5] : _item[5] };
+
+                                                     if (item._txOp=='delete')
+                                                         dyn.table(table)
+                                                            .hash(hash.attr,hash.value)
+                                                            .range(range.attr,range.value)
+                                                            .delete(function () { done(); },{ expected: { _tx: tx._id } })
+                                                            .consumed(p.trigger.consumed)
+                                                            .error(p.trigger.error);
+                                                     else
+                                                         dyn.table(table)
+                                                            .hash(hash.attr,hash.value)
+                                                            .range(range.attr,range.value)
+                                                            .updateItem({ update: { _txTransient: { action: 'DELETE' },
+                                                                                    _txApplied: { action: 'DELETE' },
+                                                                                    _tx: { action: 'DELETE' } } },
+                                                            function () { done(); })
+                                                            .consumed(p.trigger.consumed)
+                                                            .error(p.trigger.error);
+                                                      
+                                                 },
+                                                 function (err)
+                                                 {
+                                                     if (err)
+                                                       p.trigger.error(err); 
+                                                 });
+                                              },
+                                              { attrs: ['_id','_item','_txOp'],
+                                           consistent: true })
+                                             .error(p.trigger.error)
+                                             .consumed(p.trigger.consumed)
+                                             .end(cb);
+                                      },
+                                      _clean= function (cb)
+                                      {
+                                          dyn.table(db.txTable._dynamo.TableName)
+                                             .hash('_id',tx._id)
+                                             .range('_item','_')
+                                             .updateItem({ update: { state: { action: 'PUT', value: 'completed' } },
+                                                         expected: { state: 'committed' } },
+                                             function ()
+                                             {
+                                                tx.state= 'completed';
+                                                cb();   
+                                             })
+                                             .consumed(p.trigger.consumed)
+                                             .error(p.trigger.error);
+                                      };
+
+                                  if (tx.state=='pending')
+                                    _commit(function ()
+                                    {
+                                          _complete(function ()
+                                          {
+                                               _clean(p.trigger.committed);
+                                          });
+                                    });
+                                  else
+                                  if (tx.state=='committed')
+                                    _complete(function ()
+                                    {
+                                         _clean(p.trigger.committed);
+                                    });
+                                  else
+                                    p.trigger.error(new Error("Invalid transaction state: "+tx.state));
+
+                                  return p;
+                              };
+
+                              tx.rollback= function ()
+                              {
+                                  var p= dyn.promise('rolledback',null,'consumed'),
+                                      _rollback= function (cb)
+                                      {
+                                          var finished= false;
+
+                                          dyn.table(db.txTable._dynamo.TableName)
+                                             .hash('_id',tx._id)
+                                             .range('_item','target::','BEGINS_WITH')
+                                             .query(function (items)
+                                              {
+                                                 async.forEach(items,
+                                                 function (item,done)
+                                                 {
+                                                     var _item= item._item.split('::'),
+                                                         table= _item[1],
+                                                         hash= { attr: _item[2], value: _item[3] },
+                                                         range= { attr: _item[4], value: _item[4]=='_pos' ? +_item[5] : _item[5] },
+                                                         clean= function ()
+                                                         {
+                                                               dyn.table(table)
+                                                                  .hash(hash.attr,hash.value)
+                                                                  .range(range.attr,range.value)
+                                                                  .updateItem({ update: { _txTransient: { action: 'DELETE' },
+                                                                                          _txApplied: { action: 'DELETE' },
+                                                                                          _tx: { action: 'DELETE' } } },
+                                                                   function () { done(); })
+                                                                  .consumed(p.trigger.consumed)
+                                                                  .error(p.trigger.error);
+                                                         };
+
+                                                     if (item._txOp=='put')
+                                                       dyn.table(table)
+                                                          .hash(hash.attr,hash.value)
+                                                          .range(range.attr,range.value)
+                                                          .get(function (item)
+                                                           {
+                                                               if (item._txTransient)
+                                                                 dyn.table(table)
+                                                                    .hash(hash.attr,hash.value)
+                                                                    .range(range.attr,range.value)
+                                                                    .delete(function () { done(); })
+                                                                    .consumed(p.trigger.consumed)
+                                                                    .error(p.trigger.error); 
+                                                               else
+                                                                   dyn.table(db.txTable._dynamo.TableName)
+                                                                      .hash('_id',tx._id)
+                                                                      .range('_item',['copy',
+                                                                                      table,
+                                                                                      hash.attr,
+                                                                                      hash.value,
+                                                                                      range.attr,
+                                                                                      range.value].join('::'))
+                                                                      .get(function (copy)
+                                                                       {
+                                                                              delete copy['_id'];
+                                                                              delete copy['_item'];
+
+                                                                              copy[hash.attr]= hash.value;
+                                                                              copy[range.attr]= range.value;
+
+                                                                              dyn.table(table)
+                                                                                 .hash(hash.attr,hash.value)
+                                                                                 .range(range.attr,range.value)
+                                                                                 .put(function () { done(); })
+                                                                                 .consumed(p.trigger.consumed)
+                                                                                 .error(p.trigger.error); 
+                                                                       })
+                                                                       .consumed(p.trigger.consumed)
+                                                                       .error(p.trigger.error); 
+                                                           })
+                                                           .consumed(p.trigger.consumed)
+                                                           .error(p.trigger.error); 
+                                                     else
+                                                       clean();
+                                                 },
+                                                 function (err)
+                                                 {
+                                                     finished= true;
+
+                                                     if (err)
+                                                       p.trigger.error(err); 
+                                                 });
+                                              },
+                                              { attrs: ['_id','_item','_txOp'],
+                                           consistent: true })
+                                             .error(p.trigger.error)
+                                             .consumed(p.trigger.consumed)
+                                             .end(function setstate()
+                                           {
+                                                if (finished)
+                                                  dyn.table(db.txTable._dynamo.TableName)
+                                                     .hash('_id',tx._id)
+                                                     .range('_item','_')
+                                                     .updateItem({ update: { state: { action: 'PUT', value: 'rolledback' } },
+                                                                 expected: { state: 'pending' } },
+                                                     function ()
+                                                     {
+                                                        tx.state= 'rolledback';
+                                                        cb();   
+                                                     })
+                                                     .consumed(p.trigger.consumed)
+                                                     .error(p.trigger.error);
+                                                 else 
+                                                  setTimeout(setstate,10);
+                                           });
+                                      };
+
+                                  if (tx.state=='pending')
+                                    _rollback(p.trigger.rolledback);
+                                  else
+                                    p.trigger.error(new Error("Invalid transaction state: "+tx.state));
+
+                                  return p;
+                              };
+
+                              p.trigger.transaction(tx);
+                           });
+                        })
+                        .consumed(p.trigger.consumed)
+                        .error(p.trigger.error);
+
+                };
+
+                if (typeof txOpts=='string')
+                  tab.hash('_id',txOpts)
+                     .range('_item','_')
+                     .get(init,{ consistent: true })
+                     .chain(p);
+                else
+                {
+                     if (opts.tx)
+                       p.trigger.error(new Error('cannot start a transaction within a transaction'));
+                     else
+                       init({ _id: uuid(), _item: '_', state: 'pending' });
+                }
+         });
+
+         return p;
    };
 
    configureTables(cb);
