@@ -634,7 +634,7 @@ var dyngo= module.exports= function (opts,cb)
                 },
                 function (err)
                 {
-                    console.log('This may take a while...'.yellow);
+                    if (opts.hints) console.log('This may take a while...'.yellow);
 
                     dyn.deleteTable(table._dynamo.TableName,function (err)
                     {
@@ -716,7 +716,7 @@ var dyngo= module.exports= function (opts,cb)
               });
           };
 
-        console.log('This may take a while...'.yellow);
+        if (opts.hints) console.log('This may take a while...'.yellow);
 
         dyn.table(name)
            .hash('_id','S')
@@ -769,7 +769,7 @@ var dyngo= module.exports= function (opts,cb)
               });
           };
 
-        console.log('This may take a while...'.yellow);
+        if (opts.hints) console.log('This may take a while...'.yellow);
 
         dyn.table(opts.name)
            .hash('_id','S')
