@@ -4,6 +4,9 @@ dyngodb2 [![Stories in Ready](https://badge.waffle.io/aaaristo/dyngodb.png)](htt
 An **experiment** ([alpha](http://en.wikipedia.org/wiki/Software_release_life_cycle#Alpha)) to get a [MongoDB](http://www.mongodb.org/) *like* interface in front of [DynamoDB](http://aws.amazon.com/dynamodb/)
 and [CloudSearch](http://aws.amazon.com/cloudsearch/). Now supporting transactions as described by the [DynamoDB Transactions](https://github.com/awslabs/dynamodb-transactions/blob/master/DESIGN.md) protocol.
 
+In dyngodb2 we dropped the $ sign in favor of _. Also $version now is called _rev. The old branch is available [here](https://github.com/aaaristo/dyngodb/tree/dollar). Fixes to the old version will be released under the dyngodb npm package while the new releases are under the dyngodb2 npm package.
+
+
 ## Why?
 
 DynamoDB is *elastic*, *cheap* and greatly integrated with many AWS products (e.g. [Elastic MapReduce](http://aws.amazon.com/elasticmapreduce/),
