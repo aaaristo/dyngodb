@@ -881,6 +881,7 @@ var dyngo= module.exports= function (opts,cb)
                                                             .updateItem({ update: { _txTransient: { action: 'DELETE' },
                                                                                     _txApplied: { action: 'DELETE' },
                                                                                     _txDeleted: { action: 'DELETE' },
+                                                                                    _txLocked: { action: 'DELETE' },
                                                                                     _tx: { action: 'DELETE' } } },
                                                             function () { done(); })
                                                             .consumed(p.trigger.consumed)
@@ -979,6 +980,7 @@ var dyngo= module.exports= function (opts,cb)
                                                                   .updateItem({ update: { _txTransient: { action: 'DELETE' },
                                                                                           _txApplied: { action: 'DELETE' },
                                                                                           _txDeleted: { action: 'DELETE' },
+                                                                                          _txLocked: { action: 'DELETE' },
                                                                                           _tx: { action: 'DELETE' } } },
                                                                    function () { done(); })
                                                                   .consumed(p.trigger.consumed)
