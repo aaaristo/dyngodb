@@ -223,4 +223,57 @@ describe('transactions',function ()
            });
 
        });
+
+       describe('query',function ()
+       {
+           it('If transaction A inserts an item without committing, transaction B should not see the inserted item until commited',
+           function (done)
+           {
+               var items= _.collect(_.range(10),function (n) { return { _id: 'item'+n, n: n+1 } });
+
+               db.test.save(items).success(function ()
+               {
+                  db.transaction().transaction(function (A)
+                  {
+                     db.transaction().transaction(function (B)
+                     {
+                         A.test.save({ _id: 'itemS', n: 0 }).success(function ()
+                         {
+                             B.test.find().sort({ n: 1 }).limit(3)
+                                   .results(function (objs)
+                                   {
+                                      objs[0].n.should.equal(1);
+                                      objs.length.should.equal(3);
+                                   })
+                                   .error(done)
+                                   .end(function ()
+                                   {
+                                     A.test.find().sort({ n: 1 }).limit(3)
+                                           .results(function (objs)
+                                           {
+                                              objs[0].n.should.equal(0);
+                                              objs.length.should.equal(3);
+                                           })
+                                           .error(done)
+                                           .end(function ()
+                                           {
+                                               A.commit().committed(function ()
+                                               {
+                                                     B.test.find().sort({ n: 1 }).limit(3)
+                                                           .results(function (objs)
+                                                           {
+                                                              objs[0].n.should.equal(0);
+                                                              objs.length.should.equal(3);
+                                                           })
+                                                           .error(done)
+                                                           .end(done);
+                                               });
+                                           });
+                                   });
+                         }).error(done);
+                     });   
+                  });   
+               });  
+           });
+       });
 });
