@@ -56,7 +56,7 @@ describe('transactions',function ()
                  {
                      A.test.save({ _id: 'transient' }).success(function ()
                      {
-                        B.test.findOne({ _id: 'transient', _pos: 0 })
+                        B.test.findOne({ _id: 'transient' })
                               .result(should.not.exist)
                               .error(accept('notfound',done));
                      }).error(done);
@@ -75,7 +75,7 @@ describe('transactions',function ()
                      {
                          A.test.save({ _id: 'transient2' }).success(function ()
                          {
-                            B.test.findOne({ _id: 'transient2', _pos: 0 })
+                            B.test.findOne({ _id: 'transient2' })
                                   .result(should.not.exist)
                                   .error(accept('notfound',done));
                          }).error(done);
@@ -95,7 +95,7 @@ describe('transactions',function ()
                      {
                          A.commit().committed(function ()
                          {
-                            B.test.findOne({ _id: 'transient3', _pos: 0 })
+                            B.test.findOne({ _id: 'transient3' })
                                   .result(function (r)
                                   {
                                       should.exist(r);
@@ -125,13 +125,13 @@ describe('transactions',function ()
                      {
                          A.test.remove({ _id: 'delete1' }).success(function ()
                          {
-                             B.test.findOne({ _id: 'delete1', _pos: 0 })
+                             B.test.findOne({ _id: 'delete1' })
                                    .result(function (r)
                                    {
                                       should.exist(r);
                                       r._id.should.equal('delete1');
 
-                                      A.test.findOne({ _id: 'delete1', _pos: 0 })
+                                      A.test.findOne({ _id: 'delete1' })
                                             .result(should.not.exists)
                                             .error(accept('notfound',done));
                                    })
@@ -156,7 +156,7 @@ describe('transactions',function ()
                          {
                              A.commit().committed(function ()
                              {
-                                 B.test.findOne({ _id: 'delete2', _pos: 0 })
+                                 B.test.findOne({ _id: 'delete2' })
                                        .result(should.not.exist)
                                        .error(accept('notfound',done));
                              }).error(done);
@@ -187,13 +187,13 @@ describe('transactions',function ()
 
                          A.test.save(obj).success(function ()
                          {
-                             B.test.findOne({ _id: 'update1', _pos: 0 })
+                             B.test.findOne({ _id: 'update1' })
                                    .result(function (copy)
                                    {
                                        should.not.exist(copy.name);
                                        copy.n.should.equal(0);
 
-                                       A.test.findOne({ _id: 'update1', _pos: 0 })
+                                       A.test.findOne({ _id: 'update1' })
                                              .result(function (copy)
                                              {
                                                    copy.name.should.equal('Update2');
@@ -201,7 +201,7 @@ describe('transactions',function ()
 
                                                    A.commit().committed(function ()
                                                    {
-                                                      B.test.findOne({ _id: 'update1', _pos: 0 })
+                                                      B.test.findOne({ _id: 'update1' })
                                                             .result(function (copy)
                                                             {
                                                                copy.name.should.equal('Update2');
