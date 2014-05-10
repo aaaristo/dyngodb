@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "main": "Gruntfile.js",
   "bin": {
-    "dyngodb": "./cli.js"
+    "dyngodb2": "./cli.js"
   },
   "engines": {
     "node": ">= 0.8.0"

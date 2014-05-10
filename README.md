@@ -15,13 +15,13 @@ The main stop on it for many developers would be being able to productively use 
 ## Getting started
 Playing around:
 <pre>
-$ npm install -g dyngodb
+$ npm install -g dyngodb2
 </pre>
 <pre>
 $ export AWS_ACCESS_KEY_ID=......
 $ export AWS_SECRET_ACCESS_KEY=......
 $ export AWS_REGION=eu-west-1
-$ dyngodb
+$ dyngodb2
 > db.createCollection('test')
 > db.test.save({ name: 'John', lname: 'Smith' })
 > db.test.save({ name: 'Jane', lname: 'Burden' })
