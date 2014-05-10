@@ -80,6 +80,8 @@ var dyngo= module.exports= function (opts,cb)
 
    var configureTable= function (table)
        {
+            table.ensuredIndexes= [];
+
             table.find= function (cond,projection,identity)
             {
                 var p, modifiers= {}, table= this;
@@ -453,6 +455,7 @@ var dyngo= module.exports= function (opts,cb)
                              else
                              {
                                table.indexes.push(index);
+                               table.ensuredIndexes.push(fields);
                                p.trigger.success();
                              }
                         });
@@ -835,6 +838,12 @@ var dyngo= module.exports= function (opts,cb)
                                 return;
                               }
 
+                              _.filter(_.keys(tx),function (key) { return !!tx[key].find; })
+                              .forEach(function (tableName)
+                              {
+                                  db[tableName].ensuredIndexes.forEach(tx[tableName].ensureIndex);
+                              });
+
                               dopts.tx.transaction= _.bind(db.transaction,db);
 
                               tx.commit= function ()
@@ -1022,13 +1031,13 @@ var dyngo= module.exports= function (opts,cb)
                                                                                       range.value].join('::'))
                                                                       .get(function (copy)
                                                                        {
-                                                                              delete copy['_id'];
-                                                                              delete copy['_item'];
-                                                                              delete copy['_txLocked'];
-                                                                              delete copy['_txApplied'];
-                                                                              delete copy['_txDeleted'];
-                                                                              delete copy['_txTransient'];
-                                                                              delete copy['_tx'];
+                                                                              copy= _.omit(copy,['_id',
+                                                                                                 '_item',
+                                                                                                 '_txLocked',
+                                                                                                 '_txApplied',
+                                                                                                 '_txDeleted',
+                                                                                                 '_txTransient',
+                                                                                                 '_tx']);
 
                                                                               copy[hash.attr]= hash.value;
                                                                               copy[range.attr]= range.value;
