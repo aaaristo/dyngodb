@@ -18,7 +18,7 @@ describe('database',function ()
 {
        var db;
 
-       beforeEach(function (done)
+       before(function (done)
        {
             dyngo({ dynamo: { endpoint: new AWS.Endpoint('http://localhost:8000') }, hints: false },
             function (err,_db)
@@ -27,6 +27,12 @@ describe('database',function ()
                db.test.remove().success(done)
                                .error(done); 
             });
+       });
+
+       beforeEach(function (done)
+       {
+            db.test.remove().success(done)
+                            .error(done); 
        });
 
        it('Can connect', function (done)
@@ -98,7 +104,7 @@ describe('database',function ()
                              db.test.save(par)
                                     .success(function ()
                                     {
-                                         db.test.findOne({ $id: par.$id })
+                                         db.test.findOne({ _id: par._id })
                                                 .result(function (obj)
                                                 {
                                                       obj.somedata.should.equal('parentrchild'); 
@@ -126,7 +132,7 @@ describe('database',function ()
                              db.test.save(par)
                                     .success(function ()
                                     {
-                                         db.test.findOne({ $id: par.$id })
+                                         db.test.findOne({ _id: par._id })
                                                 .result(function (obj)
                                                 {
                                                       obj.somedata.should.equal('parentrchild'); 
@@ -174,7 +180,7 @@ describe('database',function ()
                              db.test.save(par)
                                     .success(function ()
                                     {
-                                         db.test.findOne({ $id: par.$id })
+                                         db.test.findOne({ _id: par._id })
                                                 .result(function (obj)
                                                 {
                                                       obj.somedata.should.equal('parentrarrupd'); 
@@ -206,7 +212,7 @@ describe('database',function ()
                              db.test.save(par)
                                     .success(function ()
                                     {
-                                         db.test.findOne({ $id: par.$id })
+                                         db.test.findOne({ _id: par._id })
                                                 .result(function (obj)
                                                 {
                                                       obj.somedata.should.equal('parentrarrrm'); 
@@ -234,7 +240,7 @@ describe('database',function ()
                              db.test.save(par)
                                     .success(function ()
                                     {
-                                         db.test.findOne({ $id: par.$id })
+                                         db.test.findOne({ _id: par._id })
                                                 .result(function (obj)
                                                 {
                                                       obj.somedata.should.equal('parentcarr'); 
@@ -260,7 +266,7 @@ describe('database',function ()
                 db.test.save(par)
                        .success(function ()
                        {
-                             db.test.findOne({ $id: par.$id })
+                             db.test.findOne({ _id: par._id })
                                     .result(function (obj)
                                     {
                                           should.exist(obj.val);

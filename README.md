@@ -1,8 +1,8 @@
-dyngodb [![Stories in Ready](https://badge.waffle.io/aaaristo/dyngodb.png)](http://waffle.io/aaaristo/dyngodb)
-=======
+dyngodb2 [![Stories in Ready](https://badge.waffle.io/aaaristo/dyngodb.png)](http://waffle.io/aaaristo/dyngodb)
+========
 
 An **experiment** ([alpha](http://en.wikipedia.org/wiki/Software_release_life_cycle#Alpha)) to get a [MongoDB](http://www.mongodb.org/) *like* interface in front of [DynamoDB](http://aws.amazon.com/dynamodb/)
-and [CloudSearch](http://aws.amazon.com/cloudsearch/).
+and [CloudSearch](http://aws.amazon.com/cloudsearch/). Now supporting transactions as described by the [DynamoDB Transactions](https://github.com/awslabs/dynamodb-transactions/blob/master/DESIGN.md) protocol.
 
 ## Why?
 
@@ -15,13 +15,13 @@ The main stop on it for many developers would be being able to productively use 
 ## Getting started
 Playing around:
 <pre>
-$ npm install -g dyngodb
+$ npm install -g dyngodb2
 </pre>
 <pre>
 $ export AWS_ACCESS_KEY_ID=......
 $ export AWS_SECRET_ACCESS_KEY=......
 $ export AWS_REGION=eu-west-1
-$ dyngodb
+$ dyngodb2
 > db.createCollection('test')
 > db.test.save({ name: 'John', lname: 'Smith' })
 > db.test.save({ name: 'Jane', lname: 'Burden' })
@@ -42,13 +42,19 @@ $ dyngodb
 > john.himself= john
 > db.test.save(john);
 > db.test.save(jane);
+> db.ensureTransactionTable(/*name*/) /* some transactions :) */
+> db.transaction()
+> tx.test.save({ name: 'i\'ll be rolled back :( ' })
+> tx.rollback(); /* your index is rolled back too */
+> db.transaction()
+> tx.test.save({ name: 'i\'ll be committed toghether with somenthing else' })
+> tx.test.save({ name: 'somenthing else' })
+> tx.commit(); /* your index is committed too */
 > db.test.remove()
 > db.test.drop()
 </pre>
 
 ## Goals
-
-FIRST
 
 * support a MongoDB *like* query language
 
@@ -59,9 +65,9 @@ FIRST
 
 * prevent lost-updates
 
-THEN
-
 * support transactions ([DynamoDB Transactions](https://github.com/awslabs/dynamodb-transactions))
+
+* support fulltext search
 
 ## What dyngodb actually does
 
@@ -83,19 +89,19 @@ THEN
        <pre>
        db.test.save({ name: 'John', wife: { name: 'Jane' } }) 
        => 2 items inserted into the test table
-       1:      { $id: '50fb5b63-8061-4ccf-bbad-a77660101faa',
+       1:      { _id: '50fb5b63-8061-4ccf-bbad-a77660101faa',
                  name: 'John',
-                 $$wife: '028e84d0-31a9-4f4c-abb6-c6177d85a7ff' }
-       2:      { $id: '028e84d0-31a9-4f4c-abb6-c6177d85a7ff',
+                 __wife: '028e84d0-31a9-4f4c-abb6-c6177d85a7ff' }
+       2:      { _id: '028e84d0-31a9-4f4c-abb6-c6177d85a7ff',
                  name: 'Jane' }
        </pre>
        
-       where $id is the HASH of the DynamoDB table. This enables us to respect the javascript object 
+       where _id is the HASH of the DynamoDB table. This enables us to respect the javascript object 
        identity as it was in memory, and you will get the same structure - even if it where a cyrcular graph -
-       (actually with some addons $id, $version...) when you query the data out:
+       (actually with some addons _id, _rev...) when you query the data out:
 
-       db.test.find({ name: 'John' }) => will SCAN for name: 'John' return the first object, detects $$wife
-       ($$ for an object, $$$ for an [array](#arrays)) and get (getItem) the second object. Those meta-attributes are kept
+       db.test.find({ name: 'John' }) => will SCAN for name: 'John' return the first object, detects __wife
+       (__ for an object, ___ for an [array](#arrays)) and get (getItem) the second object. Those meta-attributes are kept
        in the result for later use in save().
 
 * Basic update() support: $set, $unset (should add $push and $pull)
@@ -106,7 +112,7 @@ THEN
 
 There are 3 types of finders actually (used in this order):
 
-* Simple: manage $id queries, so the ones where the user specify the HASH of the DynamoDB table
+* Simple: manage _id queries, so the ones where the user specify the HASH of the DynamoDB table
 
 * Indexed: tries to find an index that is able to find hashes for that query
 
@@ -226,11 +232,11 @@ Session 2 modifies and tries to save John and gets an error
 The item was changed since you read it
 </pre>
 
-This is accomplished by a $version attribute which is incremented
+This is accomplished by a _rev attribute which is incremented
 at save time if changes are detected in the object since it was read
-($old attribute contains a clone of the item at read time).
+(_old attribute contains a clone of the item at read time).
 So when Session 2 tries to save the object it tries to save it
-[expecting](http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html#DDB-PutItem-request-Expected) the item to have $old.$version in the table and it fails
+[expecting](http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html#DDB-PutItem-request-Expected) the item to have _old._rev in the table and it fails
 because Session 1 already incremented it.
 
 ***note:*** when you get the above error you should reread the object you where trying to save,
@@ -255,14 +261,14 @@ Actually dyngodb is pretty incoherent about arrays, infact it has two kinds of a
     db.test.save({ name: 'John', sons: [{ name: 'Konrad' },{ name: 'Sam' },{ name: 'Jill' }] })
   </pre>
   
-  this is accomplished via the $pos RANGE attribute of the collection table. So saving the object above
+  this is accomplished via the _pos RANGE attribute of the collection table. So saving the object above
   would result in 4 items inserted in the DynamoDB table where 2 HASHes are generated (uuid):
   
   <pre>
-  1. { $id: 'uuid1', $pos: 0, name: 'John', $$$sons: 'uuid2' }
-  2. { $id: 'uuid2', $pos: 0, name: 'Konrad' }
-  3. { $id: 'uuid2', $pos: 1, name: 'Sam' }
-  4. { $id: 'uuid2', $pos: 2, name: 'Jill' }
+  1. { _id: 'uuid1', _pos: 0, name: 'John', ___sons: 'uuid2' }
+  2. { _id: 'uuid2', _pos: 0, name: 'Konrad' }
+  3. { _id: 'uuid2', _pos: 1, name: 'Sam' }
+  4. { _id: 'uuid2', _pos: 2, name: 'Jill' }
   </pre>
   Finding John would get you this structure:
   
@@ -270,24 +276,24 @@ Actually dyngodb is pretty incoherent about arrays, infact it has two kinds of a
     db.test.find({ name: 'John' })
     
     { 
-      $id: 'uuid1',
-      $pos: 0,
+      _id: 'uuid1',
+      _pos: 0,
       name: 'John',
-      $$$sons: 'uuid2',
+      ___sons: 'uuid2',
       sons: [
                {
-                  $id: 'uuid2',
-                  $pos: 0,
+                  _id: 'uuid2',
+                  _pos: 0,
                   name: 'Konrad'
                },
                {
-                  $id: 'uuid2',
-                  $pos: 1,
+                  _id: 'uuid2',
+                  _pos: 1,
                   name: 'Sam'
                },
                {
-                  $id: 'uuid2',
-                  $pos: 2,
+                  _id: 'uuid2',
+                  _pos: 2,
                   name: 'Jill'
                }
             ]
@@ -314,48 +320,48 @@ Actually dyngodb is pretty incoherent about arrays, infact it has two kinds of a
   while Edward will be contained in it. So in this case things are store like this:
   
   <pre>
-  1. { $id: 'konrad-uuid', $pos: 0, name: 'Konrad' }
-  2. { $id: 'sam-uuid', $pos: 0, name: 'Sam' }
-  3. { $id: 'jill-uuid', $pos: 0, name: 'Jill' }
-  4. { $id: 'uuid1', $pos: 0, name: 'John', $$$sons: 'uuid2' }
-  5. { $id: 'uuid1', $pos: 0, name: 'John', $$$sons: 'uuid2' }
-  6. { $id: 'uuid1', $pos: 0, name: 'John', $$$sons: 'uuid2' }
-  7. { $id: 'uuid2', $pos: 0, $ref: 'konrad-uuid' }
-  8. { $id: 'uuid2', $pos: 1, $ref: 'sam-uuid' }
-  9. { $id: 'uuid2', $pos: 2, $ref: 'jill-uuid' }
-  10. { $id: 'uuid2', $pos: 3, name: 'Edward' }
+  1. { _id: 'konrad-uuid', _pos: 0, name: 'Konrad' }
+  2. { _id: 'sam-uuid', _pos: 0, name: 'Sam' }
+  3. { _id: 'jill-uuid', _pos: 0, name: 'Jill' }
+  4. { _id: 'uuid1', _pos: 0, name: 'John', ___sons: 'uuid2' }
+  5. { _id: 'uuid1', _pos: 0, name: 'John', ___sons: 'uuid2' }
+  6. { _id: 'uuid1', _pos: 0, name: 'John', ___sons: 'uuid2' }
+  7. { _id: 'uuid2', _pos: 0, _ref: 'konrad-uuid' }
+  8. { _id: 'uuid2', _pos: 1, _ref: 'sam-uuid' }
+  9. { _id: 'uuid2', _pos: 2, _ref: 'jill-uuid' }
+  10. { _id: 'uuid2', _pos: 3, name: 'Edward' }
   </pre>
 
-  Now you see the $ref here and you probably understand what is going on. Dyngo stores array placeholders
+  Now you see the _ref here and you probably understand what is going on. Dyngo stores array placeholders
   for objects that *lives* in other hashes. Obviously, finding John you will get the right structure:
   
   <pre>
     db.test.find({ name: 'John' })
     
     { 
-      $id: 'uuid1',
-      $pos: 0,
+      _id: 'uuid1',
+      _pos: 0,
       name: 'John',
-      $$$sons: 'uuid2',
+      ___sons: 'uuid2',
       sons: [
                {
-                  $id: 'konrad-uuid',
-                  $pos: 0, // dereferenced from $ref so you get the standalone object with 0 $pos
+                  _id: 'konrad-uuid',
+                  _pos: 0, // dereferenced from _ref so you get the standalone object with 0 _pos
                   name: 'Konrad'
                },
                {
-                  $id: 'sam-uuid',
-                  $pos: 0,
+                  _id: 'sam-uuid',
+                  _pos: 0,
                   name: 'Sam'
                },
                {
-                  $id: 'jill-uuid',
-                  $pos: 0,
+                  _id: 'jill-uuid',
+                  _pos: 0,
                   name: 'Jill'
                },
                {
-                  $id: 'uuid2',
-                  $pos: 3,
+                  _id: 'uuid2',
+                  _pos: 3,
                   name: 'Jill'
                }
             ]
@@ -372,24 +378,34 @@ Actually dyngodb is pretty incoherent about arrays, infact it has two kinds of a
 
 ### Schema
 
-In dyngodb you have 2 DynamoDB table KeySchema:
+In dyngodb you have 3 DynamoDB table KeySchema:
 
-* the one used for collections where you have $id (string) as the HASH attribute and $pos (number) as the range attribute.
-  $id, if not specified in the object, is autogenerated with an UUID V4. $pos is always 0 for objects not contained in
+* the one used for collections where you have _id (string) as the HASH attribute and _pos (number) as the range attribute.
+  _id, if not specified in the object, is autogenerated with an UUID V4. _pos is always 0 for objects not contained in
   an array, and is the position of the object in the array for objects contained in arrays (see [Arrays](#arrays)).
 
-* the one used for indexes where you have $hash (string) as HASH attribute and $range (string) as the range attribute.
-  $hash represents probably the container of the results for a certain operator. and $range is used to keep the key
-  attributes of the results ($id+':'+$pos).
+* the one used for indexes where you have _hash (string) as HASH attribute and _range (string) as the range attribute.
+  _hash represents probably the container of the results for a certain operator. and _range is used to keep the key
+  attributes of the results (_id+':'+_pos).
+
+* the one used for transaction tables where you have _id (string) as HASH attribute and _item (string) as the range attribute. _id represents the transaction id. _item can be (_) the transaction header item, or some kind of item copy:
+
+  1. the target item to put when the transaction should be applied (target::table::hash attr::hash value::range attr::range value)
+  2. the copy of the item to rollback (copy::table::hash attr::hash value::range attr::range value)
 
 Some automatically generated attributes:
 
-* $id: the object identifier (if not set manually)
-* $pos: the object position in an array
-* $version: the revision of the object
-* $refs: an array of $id/s referred by the object (indexable as a string set see fat.js)
-* $$$&lt;attr name&gt;: placeholders for arrays
-* $$&lt;attr name&gt;: placeholders for objects
+* _id: the object identifier (if not set manually)
+* _pos: the object position in an array
+* _rev: the revision of the object
+* _refs: an array of _id/s referred by the object (indexable as a string set see fat.js)
+* ___&lt;attr name&gt;: placeholders for arrays
+* __&lt;attr name&gt;: placeholders for objects
+* _tx: the transaction locking the item
+* _txLocked: the time when the transaction locked the item
+* _txApplied: the transaction has already modified this item, but is not committed
+* _txTransient: the transaction inserted the item to lock it
+* _txDeleted: the transaction is going to delete the item on commit
 
 ### Local
 

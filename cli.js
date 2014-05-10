@@ -182,14 +182,14 @@ const _json= function (path,content)
 
             return workbook;
       },
-      _eval= function (cmd,db,last)
+      _eval= function (cmd,db,last,tx)
       {
         var __csv= function (path, opts, cols, tfnc) { var args= Array.prototype.slice.apply(arguments); args.unshift(db._dyn); return _csv.apply(null,args); };
-        return eval('(function (db,last,_,json,gson,csv,xlsx,argv){ return '+cmd+'; })')(db,last,_,_json,_gson,__csv,_xlsx,argv);
+        return eval('(function (db,tx,last,_,json,gson,csv,xlsx,argv){ return '+cmd+'; })')(db,tx,last,_,_json,_gson,__csv,_xlsx,argv);
       },
       _dobatch= function (db,lines,done)
       {
-         var last;
+         var last, tx;
 
          return function ()
                 {
@@ -198,7 +198,7 @@ const _json= function (path,content)
                         {
                            console.log(cmd);
 
-                           var promise= _eval(cmd,db,last);
+                           var promise= _eval(cmd,db,last,tx);
 
                            if (promise==undefined||!(promise.result||promise.success||promise.error||promise.notfound))
                              done();
@@ -218,6 +218,14 @@ const _json= function (path,content)
                                      done();
                                  });
 
+                               if (promise.transaction)
+                                 promise.transaction(function (_tx)
+                                 {
+                                     tx= _tx;
+                                     console.log(('tx: '+tx._id).green);
+                                     done();
+                                 });
+                               else
                                if (promise.result)
                                  promise.result(function (res)
                                  {
@@ -373,7 +381,7 @@ process.stdin.pause();
 
 var args= [function (err,db)
 {
-   var last;
+   var last, tx;
 
    if (err)
      console.log(err);
@@ -417,7 +425,7 @@ var args= [function (err,db)
                      },
                      _print= function (obj,cb)
                      {
-                         if (obj.$old||(obj[0]&&obj[0].$old))
+                         if (obj._old||(obj[0]&&obj[0]._old))
                              db.cleanup(obj).clean(function (obj)
                              {
                                 console.log(util.inspect(obj,{ depth: null }));
@@ -458,7 +466,7 @@ var args= [function (err,db)
                     try
                     {
                        var time= process.hrtime(),
-                           promise= _eval(answer,db,last),
+                           promise= _eval(answer,db,last,tx),
                            end,
                            printed,
                            chunks= 0,
@@ -485,7 +493,7 @@ var args= [function (err,db)
                               console.log((secs+' secs').green);
                            };
 
-                       if (promise==_||promise===false||promise===undefined) 
+                       if (promise==_||promise===false||promise===undefined||promise.createCollection) 
                        {
                           _ask(function () { console.log(promise); })();
                           return;
@@ -516,6 +524,15 @@ var args= [function (err,db)
                        if (promise.count)
                          promise.count(_ask(function (count) { console.log(('\r'+count).green); elapsed(); }));
                             
+                       if (promise.transaction)
+                         promise.transaction(function (_tx) { tx= _tx; console.log(('tx: '+tx._id).green); elapsed(); ask(); });
+                       else
+                       if (promise.committed)
+                         promise.committed(function () { tx= undefined; console.log('transaction committed'.green); elapsed(); ask(); });
+                       else
+                       if (promise.rolledback)
+                         promise.rolledback(function (competing) { tx= undefined; if (competing) console.log('transaction rolled back'.red); else console.log('transaction rolled back'.green); elapsed(); ask(); });
+                       else
                        if (promise.clean)
                          promise.clean(function (obj) {  console.log(util.inspect(obj,{ depth: null })); ask(); });
                        else
