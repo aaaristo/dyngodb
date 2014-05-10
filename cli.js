@@ -493,7 +493,7 @@ var args= [function (err,db)
                               console.log((secs+' secs').green);
                            };
 
-                       if (promise==_||promise===false||promise===undefined) 
+                       if (promise==_||promise===false||promise===undefined||promise.createCollection) 
                        {
                           _ask(function () { console.log(promise); })();
                           return;

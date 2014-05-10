@@ -18,7 +18,7 @@ describe('database',function ()
 {
        var db;
 
-       beforeEach(function (done)
+       before(function (done)
        {
             dyngo({ dynamo: { endpoint: new AWS.Endpoint('http://localhost:8000') }, hints: false },
             function (err,_db)
@@ -27,6 +27,12 @@ describe('database',function ()
                db.test.remove().success(done)
                                .error(done); 
             });
+       });
+
+       beforeEach(function (done)
+       {
+            db.test.remove().success(done)
+                            .error(done); 
        });
 
        it('Can connect', function (done)

@@ -467,6 +467,7 @@ var dyngo= module.exports= function (opts,cb)
             {
                 var p= dyn.promise(null,null,'consumed'),
                     found= false,
+                    foundErr= true,
                     consume= {},
                     _consumed= function (cons)
                     {
@@ -475,14 +476,15 @@ var dyngo= module.exports= function (opts,cb)
                     },
                     _error= function (err)
                     {
+                       foundErr= true;
                        p.trigger.consumed(consume);
                        p.trigger.error(err);
                     },
-                    _success= function ()
+                    _success= _.after(2,function ()
                     {
                        p.trigger.consumed(consume);
                        p.trigger.success();
-                    },
+                    }),
                     cursor= table.find(filter,table.indexes.length ? undefined : { _id: 1, _pos: 1 }),
                     _deleteItem= function (obj,done)
                     {
@@ -516,6 +518,9 @@ var dyngo= module.exports= function (opts,cb)
                     {
                        if (err)
                          cursor.trigger.error(err); 
+                       else
+                       if (!items.next)
+                         _success();
                     });
                 })
                 .consumed(_consumed)
@@ -875,6 +880,7 @@ var dyngo= module.exports= function (opts,cb)
                                                             .range(range.attr,range.value)
                                                             .updateItem({ update: { _txTransient: { action: 'DELETE' },
                                                                                     _txApplied: { action: 'DELETE' },
+                                                                                    _txDeleted: { action: 'DELETE' },
                                                                                     _tx: { action: 'DELETE' } } },
                                                             function () { done(); })
                                                             .consumed(p.trigger.consumed)
@@ -886,6 +892,7 @@ var dyngo= module.exports= function (opts,cb)
                                                      if (err)
                                                        p.trigger.error(err); 
                                                      else
+                                                     if (!items.next)
                                                        finished();
                                                  });
                                               },
@@ -971,6 +978,7 @@ var dyngo= module.exports= function (opts,cb)
                                                                   .range(range.attr,range.value)
                                                                   .updateItem({ update: { _txTransient: { action: 'DELETE' },
                                                                                           _txApplied: { action: 'DELETE' },
+                                                                                          _txDeleted: { action: 'DELETE' },
                                                                                           _tx: { action: 'DELETE' } } },
                                                                    function () { done(); })
                                                                   .consumed(p.trigger.consumed)
@@ -1027,6 +1035,7 @@ var dyngo= module.exports= function (opts,cb)
                                                      if (err)
                                                        p.trigger.error(err); 
                                                      else
+                                                     if (!items.next)
                                                        finished();
                                                  });
                                               },
