@@ -50,7 +50,7 @@ var dyngo= module.exports= function (opts,cb)
    opts= opts || defaults;
    opts= _.defaults(opts,defaults);
 
-   var dyn= dyno(opts.dynamo,_.extend({},opts.tx,{ txTable: opts.txTable })),
+   var dyn= dyno(opts.dynamo,_.extend(opts.tx || {},{ txTable: opts.txTable })),
        finder= _finder(dyn),
        parser= _parser(dyn,opts),
        db= _.extend({ _dyn: dyn },opts.tx,{ txTable: opts.txTable }),
@@ -815,15 +815,18 @@ var dyngo= module.exports= function (opts,cb)
                p.trigger.error(new Error('no transaction table defined'));
                return;
              }
- 
+
              var tab= dyn.table(db.txTable._dynamo.TableName),
                  init= function (tx)
                  {               
-                     tab.hash('_id',tx._id)
+                     dyn.table(db.txTable._dynamo.TableName)
+                        .hash('_id',tx._id)
                         .range('_item','_')
                         .put(tx,function ()
                         {
-                           dyngo(_.extend({ tx: tx, txTable: db.txTable },opts,txOpts),
+                           var dopts= _.extend({ tx: tx, txTable: db.txTable },opts,txOpts);
+
+                           dyngo(dopts,
                            function (err,tx)
                            {
                               if (err)
@@ -832,9 +835,11 @@ var dyngo= module.exports= function (opts,cb)
                                 return;
                               }
 
+                              dopts.tx.transaction= _.bind(db.transaction,db);
+
                               tx.commit= function ()
                               {
-                                  var p= dyn.promise('committed',null,'consumed'),
+                                  var p= dyn.promise('committed','rolledback','consumed'),
                                       _commit= function (cb)
                                       {
                                           dyn.table(db.txTable._dynamo.TableName)
@@ -848,7 +853,13 @@ var dyngo= module.exports= function (opts,cb)
                                                 cb();   
                                              })
                                              .consumed(p.trigger.consumed)
-                                             .error(p.trigger.error);
+                                             .error(function (err)
+                                             {
+                                                 if (err.code=='notfound')
+                                                   p.trigger.rolledback(true);
+                                                 else
+                                                   p.trigger.error(err);
+                                             });
                                       },
                                       _complete= function (cb)
                                       {
@@ -1013,6 +1024,11 @@ var dyngo= module.exports= function (opts,cb)
                                                                        {
                                                                               delete copy['_id'];
                                                                               delete copy['_item'];
+                                                                              delete copy['_txLocked'];
+                                                                              delete copy['_txApplied'];
+                                                                              delete copy['_txDeleted'];
+                                                                              delete copy['_txTransient'];
+                                                                              delete copy['_tx'];
 
                                                                               copy[hash.attr]= hash.value;
                                                                               copy[range.attr]= range.value;
@@ -1020,7 +1036,7 @@ var dyngo= module.exports= function (opts,cb)
                                                                               dyn.table(table)
                                                                                  .hash(hash.attr,hash.value)
                                                                                  .range(range.attr,range.value)
-                                                                                 .put(function () { done(); })
+                                                                                 .put(copy,function () { done(); })
                                                                                  .consumed(p.trigger.consumed)
                                                                                  .error(p.trigger.error); 
                                                                        })

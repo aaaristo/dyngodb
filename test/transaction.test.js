@@ -1,8 +1,13 @@
-var should= require('chai').should(),
-    assert= require('chai').assert,
+var chai = require('chai'),
+    spies = require('chai-spies'),
     AWS = require('aws-sdk'),
     _= require('underscore'),
     dyngo=  require('../index.js');
+
+chai.use(spies);
+
+var should= chai.should(),
+    assert= chai.assert;
 
 const noerr= function (done)
       {
@@ -274,6 +279,68 @@ describe('transactions',function ()
                      });   
                   });   
                });  
+           });
+       });
+
+       describe('concurrency',function ()
+       {
+           it('rollsback competing transaction',
+           function (done)
+           {
+               db.test.save({ _id: 'hot', name: 'Hot' }).success(function ()
+               {
+                   db.transaction().transaction(function (A)
+                   {
+                       db.transaction().transaction(function (B)
+                       {
+                          A.test.findOne({ _id: 'hot' })
+                                .result(function (hotA)
+                                {
+                                   hotA.name= 'HotA';
+
+                                   B.test.findOne({ _id: 'hot' })
+                                         .result(function (hotB)
+                                         {
+                                            hotB.name= 'HotB';
+
+                                            A.test.save(hotA).success(function ()
+                                            {
+                                                B.test.save(hotB).success(function ()
+                                                {
+                                                    var committedA= chai.spy();
+
+                                                    A.commit()
+                                                     .committed(committedA)
+                                                     .error(function (err)
+                                                    {
+                                                        if (err.code=='rolledback')
+                                                          B.commit().committed(function ()
+                                                          {
+                                                              db.test.findOne({ _id: 'hot' })
+                                                                     .result(function (obj)
+                                                                      {
+                                                                         committedA.should.not.have.been.called();
+                                                                         obj.name.should.equal('HotB');
+                                                                         done();
+                                                                      })
+                                                                     .error(done);
+                                                          })
+                                                          .error(done);
+                                                        else
+                                                          done(err);
+                                                    });
+                                                })
+                                                .error(done);
+                                            })
+                                            .error(done);
+                                         })
+                                         .error(done);
+                                })
+                                .error(done);
+
+                       }).error(done);
+                   }).error(done);
+               }).error(done);
            });
        });
 });
