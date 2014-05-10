@@ -1,7 +1,7 @@
 {
-  "name": "dyngodb",
+  "name": "dyngodb2",
   "description": "An experiment (alpha) to get a MongoDB like interface in front of DynamoDB",
-  "version": "0.1.72",
+  "version": "0.1.0",
   "main": "Gruntfile.js",
   "bin": {
     "dyngodb": "./cli.js"
