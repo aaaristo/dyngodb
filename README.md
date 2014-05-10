@@ -2,7 +2,7 @@ dyngodb2 [![Stories in Ready](https://badge.waffle.io/aaaristo/dyngodb.png)](htt
 ========
 
 An **experiment** ([alpha](http://en.wikipedia.org/wiki/Software_release_life_cycle#Alpha)) to get a [MongoDB](http://www.mongodb.org/) *like* interface in front of [DynamoDB](http://aws.amazon.com/dynamodb/)
-and [CloudSearch](http://aws.amazon.com/cloudsearch/).
+and [CloudSearch](http://aws.amazon.com/cloudsearch/). Now supporting transactions as described by the [DynamoDB Transactions](https://github.com/awslabs/dynamodb-transactions/blob/master/DESIGN.md) protocol.
 
 ## Why?
 
