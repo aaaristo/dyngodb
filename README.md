@@ -202,7 +202,11 @@ There are actually 2 indexes (4 but only 2 are used):
   are whitespace tokenized and [trigrams](http://swtch.com/~rsc/regexp/regexp4.html) are created for every token,
   so that each item that has a trigram is saved as a range of an hash for that trigram. When you query, the query
   string is whitespace tokenized and for each token trigrams are computed, then any item having all those trigrams
-  is returned, the order of words in the query string is ignored.
+  is returned, the order of words in the query string is ignored. NOTE: This will not scale very well for items with 
+  large text to index unless you scale the writes for that index, you should balance the cost of your writes compared 
+  to the same usage on CloudSearch and pick what is best for you, also keep in mind that CloudSearch offers [a lot 
+  more](http://docs.aws.amazon.com/cloudsearch/latest/developerguide/what-is-cloudsearch.html): stemming, i18n, stoplists, results management... 
+  
   
   
 * cloud-search.js: is a fulltext index using AWS CloudSearch under the covers.
