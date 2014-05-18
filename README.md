@@ -193,8 +193,8 @@ There are actually 2 indexes (4 but only 2 are used):
     db.test.save({ type: 'person', name: 'Jane', about: 'she is the mom of two great childs', tags: ['hipster','hacker'] })
     db.test.ensureIndex({ name: 'S', $text: function (item) { return _.pick(item,['name','about']); } })
     db.test.find({ $text: 'mom childs' }) // should return Jane
-    db.test.find({ name: 'Jane', $text: 'mom childs' }) // should return Jane, $text is chainable with other fields
-    db.test.find({ name: 'John', $text: 'mom childs' }) // should return an empty resultset
+    db.test.find({ name: 'Jane', $text: 'mom child' }) // should return Jane, $text is chainable with other fields
+    db.test.find({ name: 'John', $text: 'mom child' }) // should return an empty resultset
   </pre>
   
   As you can see you create a $text function in the ensureIndex to manage what fields you want the index to
