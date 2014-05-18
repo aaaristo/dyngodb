@@ -445,7 +445,7 @@ var dyngo= module.exports= function (opts,cb)
 
                   process.nextTick(function ()
                   {
-                      var index= _index(dyn,table,fields);
+                      var index= _index(dyn,table,fields,opts);
 
                       if (index)
                         index.ensure(function (err)
