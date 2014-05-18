@@ -186,7 +186,7 @@ There are actually 2 indexes (4 but only 2 are used):
   </pre>
 
   Inspired by [twitter bloodhound](https://github.com/twitter/typeahead.js/blob/master/doc/bloodhound.md), and 
-  [this great article](http://swtch.com/~rsc/regexp/regexp4.html), i recently added a completely experimental $text 
+  [Google Code Search](http://swtch.com/~rsc/regexp/regexp4.html), i recently added a completely experimental $text 
   field to the fat.js index so you can do fulltext searches without using CloudSearch, that is actually too 
   expensive for small apps.
   
