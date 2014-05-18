@@ -185,6 +185,26 @@ There are actually 2 indexes (4 but only 2 are used):
     db.test.find({ tags: { $all: ['hipster','hacker'] } })
   </pre>
 
+  Inspired by [twitter bloodhound](https://github.com/twitter/typeahead.js/blob/master/doc/bloodhound.md), i recently 
+  added a completely experimental $text field to the fat.js index so you can do full text searches without using 
+  CloudSearch, that is actually too expensive for small apps.
+  
+  <pre>
+    db.test.save({ type: 'person', name: 'Jane', about: 'she is the mom of two great childs', tags: ['hipster','hacker'] })
+    db.test.ensureIndex({ name: 'S', $text: function (item) { return _.pick(item,['name','about']); } })
+    db.test.find({ $text: 'mom childs' }) // should return Jane
+    db.test.find({ name: 'Jane', $text: 'mom childs' }) // should return Jane, $text is chainable with other fields
+    db.test.find({ name: 'John', $text: 'mom childs' }) // should return an empty resultset
+  </pre>
+  
+  As you can see you create a $text function in the ensureIndex to manage what fields you want the index to
+  make fulltext-searchable, then you can use a $text field in the query to specify your search terms. The values,
+  are whitespace tokenized and [trigrams](http://swtch.com/~rsc/regexp/regexp4.html) are created for every token,
+  so that each item that has a trigram is saved as a range of an hash for that trigram. When you query, the query
+  string is whitespace tokenized and for each token trigrams are computed, then any item having all those trigrams
+  is returned, the order of words in the query string is ignored.
+  
+  
 * cloud-search.js: is a fulltext index using AWS CloudSearch under the covers.
 
   Suppose to have the same table as before.
