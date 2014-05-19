@@ -236,13 +236,13 @@ Suppose to have two sessions going on
 
 Session 1 connects and read John
 <pre>
-$ dyngodb
+$ dyngodb2
 > db.test.find({ name: 'John' })
 </pre>
 
 Session 2 connects and read John
 <pre>
-$ dyngodb
+$ dyngodb2
 > db.test.find({ name: 'John' })
 </pre>
 
@@ -470,14 +470,14 @@ db.test.save([{ name: 'John' },{ name: 'Jane' }])
 </pre>
 
 <pre>
-dyngodb --somename Jake  &lt; commands.txt
+dyngodb2 --somename Jake  &lt; commands.txt
 </pre>
 
 ### Streams (for raw dynamodb items)
 
 Example of moving items between tables with streams (10 by 10):
 <pre>
-dyngodb
+dyngodb2
 > t1= db._dyn.stream('table1')
 > t2= db._dyn.stream('table2')
 > t1.scan({ limit: 10 }).pipe(t2.mput('put')).on('finish',function () { console.log('done'); })
@@ -487,7 +487,7 @@ dyngodb
 
 Example of loading a csv file (see [node-csv](https://github.com/wdavidw/node-csv) for options)
 <pre>
-dyngodb
+dyngodb2
 > csv('my/path/to.csv',{ delimiter: ';', escape: '"' },['id','name','mail'])
 > last
 > db.mytbl.save(last)
@@ -497,7 +497,7 @@ dyngodb
 
 Example of loading an xlsx file
 <pre>
-dyngodb
+dyngodb2
 > workbook= xlsx('my/path/to.xlsx') 
 > contacts= workbook.sheet('Contacts').toJSON(['id','name','mail'])
 > db.mytbl.save(contacts)
@@ -510,7 +510,7 @@ dyngodb will go through the required steps until it reaches
 the required value.
 
 <pre>
-dyngodb
+dyngodb2
 > db.mytbl.modify(1024,1024)
 > db.mytbl.indexes[0].modify(1024,1024)
 </pre>
@@ -519,14 +519,14 @@ dyngodb
 
 Export:
 <pre>
-dyngodb
+dyngodb2
 > db.mytbl.find()
 > db.cleanup(last).clean(function (d) { gson('export.gson',d); });
 </pre>
 
 Import:
 <pre>
-dyngodb
+dyngodb2
 > db.mytbl.save(gson('export.gson'));
 </pre>
 
