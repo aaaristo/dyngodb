@@ -29,11 +29,25 @@ const _nu= function (v)
           { 
                 var c;
 
-                if (!(c=consume[cons.table]))
-                  c= consume[cons.table]= { read: 0, write: 0 };
+                if (cons.table)
+                {
+                    if (!(c=consume[cons.table]))
+                      c= consume[cons.table]= { read: 0, write: 0 };
 
-                c.read+= cons.read;
-                c.write+= cons.write;
+                    c.read+= cons.read;
+                    c.write+= cons.write;
+                }
+                else
+                _.keys(cons).forEach(function (table)
+                {
+                    var c, tcons= cons[table];
+
+                    if (!(c=consume[table]))
+                      c= consume[table]= { read: 0, write: 0 };
+
+                    c.read+= tcons.read;
+                    c.write+= tcons.write;
+                }); 
           };
       };
 
@@ -809,7 +823,8 @@ var dyngo= module.exports= function (opts,cb)
 
    db.transaction= function (txOpts)
    {
-         var p= dyn.promise('transaction',null,'consumed');
+         var p= dyn.promise('transaction',null,'consumed'),
+             consume= {};
 
          process.nextTick(function ()
          {
@@ -849,6 +864,7 @@ var dyngo= module.exports= function (opts,cb)
                               tx.commit= function ()
                               {
                                   var p= dyn.promise('committed','rolledback','consumed'),
+                                      consume= {},
                                       _commit= function (cb)
                                       {
                                           dyn.table(db.txTable._dynamo.TableName)
@@ -861,7 +877,7 @@ var dyngo= module.exports= function (opts,cb)
                                                 tx.state= 'committed';
                                                 cb();   
                                              })
-                                             .consumed(p.trigger.consumed)
+                                             .consumed(_collect(consume))
                                              .error(function (err)
                                              {
                                                  if (err.code=='notfound')
@@ -892,7 +908,7 @@ var dyngo= module.exports= function (opts,cb)
                                                             .hash(hash.attr,hash.value)
                                                             .range(range.attr,range.value)
                                                             .delete(function () { done(); },{ expected: { _tx: tx._id } })
-                                                            .consumed(p.trigger.consumed)
+                                                            .consumed(_collect(consume))
                                                             .error(p.trigger.error);
                                                      else
                                                          dyn.table(table)
@@ -904,7 +920,7 @@ var dyngo= module.exports= function (opts,cb)
                                                                                     _txLocked: { action: 'DELETE' },
                                                                                     _tx: { action: 'DELETE' } } },
                                                             function () { done(); })
-                                                            .consumed(p.trigger.consumed)
+                                                            .consumed(_collect(consume))
                                                             .error(p.trigger.error);
                                                       
                                                  },
@@ -920,7 +936,7 @@ var dyngo= module.exports= function (opts,cb)
                                               { attrs: ['_id','_item','_txOp'],
                                            consistent: true })
                                              .error(p.trigger.error)
-                                             .consumed(p.trigger.consumed)
+                                             .consumed(_collect(consume))
                                              .end(finished);
                                       },
                                       _clean= function (cb)
@@ -937,6 +953,11 @@ var dyngo= module.exports= function (opts,cb)
                                              })
                                              .consumed(p.trigger.consumed)
                                              .error(p.trigger.error);
+                                      },
+                                      _committed= function ()
+                                      {
+                                          p.trigger.consumed(consume);
+                                          p.trigger.committed();
                                       };
 
                                   if (tx.state=='pending')
@@ -944,14 +965,14 @@ var dyngo= module.exports= function (opts,cb)
                                     {
                                           _complete(function ()
                                           {
-                                               _clean(p.trigger.committed);
+                                               _clean(_committed);
                                           });
                                     });
                                   else
                                   if (tx.state=='committed')
                                     _complete(function ()
                                     {
-                                         _clean(p.trigger.committed);
+                                         _clean(_committed);
                                     });
                                   else
                                     p.trigger.error(new Error("Invalid transaction state: "+tx.state));
@@ -962,6 +983,7 @@ var dyngo= module.exports= function (opts,cb)
                               tx.rollback= function ()
                               {
                                   var p= dyn.promise('rolledback',null,'consumed'),
+                                      consume= {},
                                       _rollback= function (cb)
                                       {
                                           var finished= _.after(2,function ()
@@ -976,7 +998,7 @@ var dyngo= module.exports= function (opts,cb)
                                                         tx.state= 'rolledback';
                                                         cb();   
                                                      })
-                                                     .consumed(p.trigger.consumed)
+                                                     .consumed(_collect(consume))
                                                      .error(p.trigger.error);
                                               });
 
@@ -1003,7 +1025,7 @@ var dyngo= module.exports= function (opts,cb)
                                                                                           _txLocked: { action: 'DELETE' },
                                                                                           _tx: { action: 'DELETE' } } },
                                                                    function () { done(); })
-                                                                  .consumed(p.trigger.consumed)
+                                                                  .consumed(_collect(consume))
                                                                   .error(p.trigger.error);
                                                          };
 
@@ -1018,7 +1040,7 @@ var dyngo= module.exports= function (opts,cb)
                                                                     .hash(hash.attr,hash.value)
                                                                     .range(range.attr,range.value)
                                                                     .delete(function () { done(); })
-                                                                    .consumed(p.trigger.consumed)
+                                                                    .consumed(_collect(consume))
                                                                     .error(p.trigger.error); 
                                                                else
                                                                    dyn.table(db.txTable._dynamo.TableName)
@@ -1049,10 +1071,10 @@ var dyngo= module.exports= function (opts,cb)
                                                                                  .consumed(p.trigger.consumed)
                                                                                  .error(p.trigger.error); 
                                                                        })
-                                                                       .consumed(p.trigger.consumed)
+                                                                       .consumed(_collect(consume))
                                                                        .error(p.trigger.error); 
                                                            })
-                                                           .consumed(p.trigger.consumed)
+                                                           .consumed(_collect(consume))
                                                            .error(p.trigger.error); 
                                                      else
                                                        clean();
@@ -1069,7 +1091,7 @@ var dyngo= module.exports= function (opts,cb)
                                               { attrs: ['_id','_item','_txOp'],
                                            consistent: true })
                                              .error(p.trigger.error)
-                                             .consumed(p.trigger.consumed)
+                                             .consumed(_collect(consume))
                                              .end(finished);
                                       };
 
@@ -1081,10 +1103,11 @@ var dyngo= module.exports= function (opts,cb)
                                   return p;
                               };
 
+                              p.trigger.consumed(consume);
                               p.trigger.transaction(tx);
                            });
                         })
-                        .consumed(p.trigger.consumed)
+                        .consumed(_collect(consume))
                         .error(p.trigger.error);
 
                 };
@@ -1093,7 +1116,8 @@ var dyngo= module.exports= function (opts,cb)
                   tab.hash('_id',txOpts)
                      .range('_item','_')
                      .get(init,{ consistent: true })
-                     .chain(p);
+                     .consumed(_collect(consume))
+                     .error(p.trigger.error);
                 else
                 {
                      if (opts.tx)
