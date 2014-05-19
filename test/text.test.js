@@ -102,6 +102,16 @@ describe('text',function ()
                                 .error(accept('notfound',done));
                     })
                     .error(_noerr(done));
+       });
 
+       it('Should not find any result', function (done)
+       {
+             db.test.findOne({ $text: 'Xinterdum adi' }) // inspired by bloodhound search with whitespace tokenizer
+                    .result(function (obj)
+                    {
+                          should.not.exist(obj);
+                          done();
+                    })
+                    .error(accept('notfound',done));
        });
 });
