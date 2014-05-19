@@ -1,6 +1,8 @@
 dyngodb [![Stories in Ready](https://badge.waffle.io/aaaristo/dyngodb.png)](http://waffle.io/aaaristo/dyngodb)
 =======
 
+**YOU SHOULD USE** [dyngodb2](https://www.npmjs.org/package/dyngodb2) to start new projects.
+
 An **experiment** ([alpha](http://en.wikipedia.org/wiki/Software_release_life_cycle#Alpha)) to get a [MongoDB](http://www.mongodb.org/) *like* interface in front of [DynamoDB](http://aws.amazon.com/dynamodb/)
 and [CloudSearch](http://aws.amazon.com/cloudsearch/).
 

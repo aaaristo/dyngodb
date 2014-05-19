@@ -565,4 +565,6 @@ var args= [function (err,db)
 if (argv.local) 
   args.unshift({ dynamo: { endpoint: new AWS.Endpoint('http://localhost:8000') } });
 
+console.log('dyngodb2 is out, you should start with it if you are a new user (npm install -g dyngodb2). dyngodb is deprecated.'.red);
+
 dyngo.apply(null,args);
