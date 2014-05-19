@@ -533,6 +533,17 @@ dyngodb2
 You can use either json or [gson](https://github.com/aaaristo/GSON) function the only difference is that the gson function
 is able to serialize cyrcular object graphs in a non-recursive way.
 
+### Q&D migration from dyngodb to dyngodb2
+
+<pre>
+dyngodb
+> db.mytbl.find()
+> db.cleanup(last).clean(function (d) { gson('export.gson',d); });
+cat export.gson | sed 's/"$id"\:/"_id":/g' > export2.gson
+dyngodb2
+> db.mytbl.save(gson('export2.gson'));
+</pre>
+
 ### Help wanted!
 
 Your help is highly appreciated: we need to test / discuss / fix code, performance, roadmap
