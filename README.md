@@ -544,6 +544,11 @@ dyngodb2
 > db.mytbl.save(gson('export2.gson'));
 </pre>
 
+Things you may need to update:
+
+  * your .dyngorc 
+  * your code $id -> _id (e.g. sed -i '' 's/$id/_id/g' *)
+
 ### Help wanted!
 
 Your help is highly appreciated: we need to test / discuss / fix code, performance, roadmap
