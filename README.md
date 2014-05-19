@@ -547,7 +547,7 @@ dyngodb2
 Things you may need to update:
 
   * your .dyngorc 
-  * your code $id -> _id (e.g. sed -i '' 's/$id/_id/g' *)
+  * your code $id -> _id (e.g. sed -i '.old' 's/$id/_id/g' *)
 
 ### Help wanted!
 
