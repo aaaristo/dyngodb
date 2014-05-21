@@ -241,8 +241,9 @@ var dyngo= module.exports= function (opts,cb)
                             {
                                var _keys= _.keys(obj),
                                    _omit= ['_old'],
-                                   diffs= _.filter(diff(_.omit(obj._old,['_old']) || {},_.omit(obj,['_old'])),
-                                                   function (d) { return !(d.kind=='D'&&_.last(d.path)=='_old'); });
+                                   diffs= diff(obj._old || {},
+                                               obj,
+                                               function (path,key) { return key=='_old'; });
 
                                if (!diffs || diffs.length==0
                                     || (obj._old || {_rev: 0})._rev<obj._rev
