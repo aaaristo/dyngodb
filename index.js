@@ -241,10 +241,12 @@ var dyngo= module.exports= function (opts,cb)
                             {
                                var _keys= _.keys(obj),
                                    _omit= ['_old'],
-                                   diffs= diff(_.omit(obj._old,['_old']) || {},_.omit(obj,['_old']));
+                                   diffs= _.filter(diff(_.omit(obj._old,['_old']) || {},_.omit(obj,['_old'])),
+                                                   function (d) { return !(d.kind=='D'&&_.last(d.path)=='_old'); });
 
-                               if (!diffs
-                                    ||(obj._old || {_rev: 0})._rev<obj._rev) return;
+                               if (!diffs || diffs.length==0
+                                    || (obj._old || {_rev: 0})._rev<obj._rev
+                                  ) return;
 
                                _hashrange(obj);
 
