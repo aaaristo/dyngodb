@@ -549,6 +549,10 @@ Things you may need to update:
   * your .dyngorc 
   * your code $id -> _id (e.g. sed -i '.old' 's/$id/_id/g' *)
 
+### AngularJS and Express integration
+
+Check: [https://github.com/aaaristo/angular-gson-express-dyngodb](https://github.com/aaaristo/angular-gson-express-dyngodb)
+
 ### Help wanted!
 
 Your help is highly appreciated: we need to test / discuss / fix code, performance, roadmap
