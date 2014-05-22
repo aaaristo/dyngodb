@@ -442,6 +442,13 @@ var args= [function (err,db)
                  {
 
                     if (!answer) { ask(); return; };
+
+                    if (answer.indexOf('clean ')==0)
+                    {
+                       var target= answer.substring(6);
+
+                       answer= 'db.cleanup('+target+').clean(console.log)';
+                    }
                     
                     if (answer.indexOf('show collections') > -1)
                     { 
