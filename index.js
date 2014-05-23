@@ -187,7 +187,7 @@ var dyngo= module.exports= function (opts,cb)
                 return _.extend({ $consistent: true }, table);
             };
 
-            table.save= function (_obj)
+            table.save= function (_obj,isCreate)
             {
                 var objs= _obj ? (Array.isArray(_obj) ? _obj : [_obj]) : [],
                     consume= {},
@@ -237,7 +237,7 @@ var dyngo= module.exports= function (opts,cb)
                                     });
                                 });
                             },
-                            _save= function (obj)
+                            _save= function (obj,isCreate)
                             {
                                var _keys= _.keys(obj),
                                    _omit= ['_old'],
@@ -375,7 +375,7 @@ var dyngo= module.exports= function (opts,cb)
 
                                _index(obj); // index after _ fields are set so they are indexable too
 
-                               ops.unshift({ op: 'put', item: obj, omit: _omit }); // let the aggregate op came first of "contained" objects, so that the aggrgate version protects the rest
+                               ops.unshift({ op: 'put', item: obj, omit: _omit, isCreate: isCreate }); // let the aggregate op came first of "contained" objects, so that the aggrgate version protects the rest
                             },
                             _mput= function (gops,done)
                             {
@@ -404,7 +404,8 @@ var dyngo= module.exports= function (opts,cb)
                                              obj._old= cclone(_.omit(obj,'_old'));
                                              done();
                                           },
-                                          { expected: obj._old&&_nu(obj._old._rev) ? { _rev: obj._old._rev } : undefined })
+                                          { expected: obj._old&&_nu(obj._old._rev) ? { _rev: obj._old._rev } : undefined,
+                                            exists: isCreate ? false : undefined })
                                           .consumed(_collect(consume))
                                           .error(done);
                                      else
@@ -420,7 +421,7 @@ var dyngo= module.exports= function (opts,cb)
                             };
 
 
-                        _save(obj);
+                        _save(obj,isCreate);
 
                         _.keys(gops).forEach(function (table)
                         {
@@ -451,6 +452,24 @@ var dyngo= module.exports= function (opts,cb)
                               p.trigger.success();
                     });
 
+                });
+
+                return p;
+            };
+
+            table.create= function (obj)
+            {
+                var p= dyn.promise(null,'exists','consumed');
+
+                table.save(obj,true)
+                     .success(p.trigger.success)
+                     .consumed(p.trigger.consumed)
+                     .error(function (err)
+                {
+                   if (err.code=='found')
+                     p.trigger.exists();
+                   else
+                     p.trigger.error(err);
                 });
 
                 return p;
