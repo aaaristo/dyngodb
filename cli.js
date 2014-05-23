@@ -447,7 +447,7 @@ var args= [function (err,db)
                     {
                        var target= answer.substring(6);
 
-                       answer= 'db.cleanup('+target+').clean(console.log)';
+                       answer= 'db.cleanup('+target+')';
                     }
                     
                     if (answer.indexOf('show collections') > -1)
