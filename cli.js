@@ -14,6 +14,7 @@ var dyngo= require('./index'),
     path= require('path').join,
     colors = require('colors'),
     GSON = require('gson'),
+    coffee= require('coffee-script'),
     AWS = require('aws-sdk');
 
 var argv = require('optimist').argv;
@@ -185,7 +186,18 @@ const _json= function (path,content)
       _eval= function (cmd,db,last,tx)
       {
         var __csv= function (path, opts, cols, tfnc) { var args= Array.prototype.slice.apply(arguments); args.unshift(db._dyn); return _csv.apply(null,args); };
-        return eval('(function (db,tx,last,_,json,gson,csv,xlsx,argv){ return '+cmd+'; })')(db,tx,last,_,_json,_gson,__csv,_xlsx,argv);
+
+        try
+        {
+          return eval('(function (db,tx,fs,last,_,json,gson,csv,xlsx,argv){ return '+cmd+'; })')(db,tx,fs,last,_,_json,_gson,__csv,_xlsx,argv);
+        }
+        catch (ex)
+        {
+          if (ex instanceof SyntaxError||ex instanceof ReferenceError)
+           return coffee.eval('((global,db,tx,fs,last,_,json,gson,csv,xlsx,argv) -> '+cmd+')')(global,db,tx,fs,last,_,_json,_gson,__csv,_xlsx,argv);
+          else
+            throw ex;
+        }
       },
       _dobatch= function (db,lines,done)
       {
