@@ -137,7 +137,7 @@ describe('transactions',function ()
                                       r._id.should.equal('delete1');
 
                                       A.test.findOne({ _id: 'delete1' })
-                                            .result(should.not.exists)
+                                            .result(should.not.exist)
                                             .error(accept('notfound',done));
                                    })
                                    .error(done);

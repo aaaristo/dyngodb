@@ -475,6 +475,13 @@ var dyngo= module.exports= function (opts,cb)
                 return p;
             };
 
+            table.enableIndex= function (fields)
+            {
+               var index= _index(dyn,table,fields,opts);
+               table.indexes.push(index);
+               table.ensuredIndexes.push(fields);
+            };
+
             table.ensureIndex= function (fields)
             {
                   var p= dyn.promise();
@@ -871,7 +878,7 @@ var dyngo= module.exports= function (opts,cb)
                               _.filter(_.keys(tx),function (key) { return !!tx[key].find; })
                               .forEach(function (tableName)
                               {
-                                  db[tableName].ensuredIndexes.forEach(tx[tableName].ensureIndex);
+                                  db[tableName].ensuredIndexes.forEach(tx[tableName].enableIndex); // use enableIndex (sync) do not ensure..
                               });
 
                               dopts.tx.transaction= _.bind(db.transaction,db);
@@ -926,7 +933,6 @@ var dyngo= module.exports= function (opts,cb)
 
                                                      if (item._txOp=='delete')
                                                      {
- console.log('perform delete: ',hash);
                                                          dyn.table(table)
                                                             .hash(hash.attr,hash.value)
                                                             .range(range.attr,range.value)

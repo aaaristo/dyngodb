@@ -11,6 +11,16 @@ const noerr= function (done)
              should.not.exist(err);
              done();
          };
+      },
+      accept= function (code,done)
+      {
+         return function (err)
+         {
+           if (err.code==code)
+             done(); 
+           else
+             done(err);
+         };
       };
 
 
@@ -279,4 +289,25 @@ describe('database',function ()
            });
        });
 
+       describe('remove',function ()
+       {
+           it('Can delete objects found by _id, with client side filtering', function (done)
+           {
+                // if filter attributes are not included in projection by the finder
+                // when it can't filter them, this test should fail
+                db.test.save({ _id: 'toremove', uid: 'andrea' })
+                       .success(function ()
+                       {
+                             db.test.remove({ _id: 'toremove', uid: 'andrea' })
+                                    .success(function ()
+                                    {
+                                        db.test.findOne({ _id: 'toremove', uid: 'andrea' }) 
+                                               .result(should.not.exist)
+                                               .error(accept('notfound',done));
+                                    })
+                                    .error(done);
+                       })
+                       .error(done);
+           });
+       });
 });
