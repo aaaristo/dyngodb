@@ -903,12 +903,18 @@ var dyngo= module.exports= function (opts,cb)
                                       },
                                       _complete= function (cb)
                                       {
-                                          var finished= _.after(2,cb);
+                                          var sync= dyn.syncResults(function (err)
+                                          {
+                                              if (err)
+                                                p.trigger.error(err);
+                                              else
+                                                cb();
+                                          });
 
                                           dyn.table(db.txTable._dynamo.TableName)
                                              .hash('_id',tx._id)
                                              .range('_item','target::','BEGINS_WITH')
-                                             .query(function (items)
+                                             .query(sync.results(function (items,done)
                                               {
                                                  async.forEach(items,
                                                  function (item,done)
@@ -919,12 +925,15 @@ var dyngo= module.exports= function (opts,cb)
                                                          range= { attr: _item[4], value: _item[4]=='_pos' ? +_item[5] : _item[5] };
 
                                                      if (item._txOp=='delete')
+                                                     {
+ console.log('perform delete: ',hash);
                                                          dyn.table(table)
                                                             .hash(hash.attr,hash.value)
                                                             .range(range.attr,range.value)
                                                             .delete(function () { done(); },{ expected: { _tx: tx._id } })
                                                             .consumed(_collect(consume))
-                                                            .error(p.trigger.error);
+                                                            .error(done);
+                                                     }
                                                      else
                                                          dyn.table(table)
                                                             .hash(hash.attr,hash.value)
@@ -936,23 +945,16 @@ var dyngo= module.exports= function (opts,cb)
                                                                                     _tx: { action: 'DELETE' } } },
                                                             function () { done(); })
                                                             .consumed(_collect(consume))
-                                                            .error(p.trigger.error);
+                                                            .error(done);
                                                       
                                                  },
-                                                 function (err)
-                                                 {
-                                                     if (err)
-                                                       p.trigger.error(err); 
-                                                     else
-                                                     if (!items.next)
-                                                       finished();
-                                                 });
-                                              },
+                                                 done);
+                                              }),
                                               { attrs: ['_id','_item','_txOp'],
                                            consistent: true })
                                              .error(p.trigger.error)
                                              .consumed(_collect(consume))
-                                             .end(finished);
+                                             .end(sync.end);
                                       },
                                       _clean= function (cb)
                                       {
@@ -1001,26 +1003,29 @@ var dyngo= module.exports= function (opts,cb)
                                       consume= {},
                                       _rollback= function (cb)
                                       {
-                                          var finished= _.after(2,function ()
+                                          var sync= dyn.syncResults(function (err)
                                               {
-                                                  dyn.table(db.txTable._dynamo.TableName)
-                                                     .hash('_id',tx._id)
-                                                     .range('_item','_')
-                                                     .updateItem({ update: { state: { action: 'PUT', value: 'rolledback' } },
-                                                                 expected: { state: 'pending' } },
-                                                     function ()
-                                                     {
-                                                        tx.state= 'rolledback';
-                                                        cb();   
-                                                     })
-                                                     .consumed(_collect(consume))
-                                                     .error(p.trigger.error);
+                                                  if (err)
+                                                    p.trigger.error(err);
+                                                  else
+                                                      dyn.table(db.txTable._dynamo.TableName)
+                                                         .hash('_id',tx._id)
+                                                         .range('_item','_')
+                                                         .updateItem({ update: { state: { action: 'PUT', value: 'rolledback' } },
+                                                                     expected: { state: 'pending' } },
+                                                         function ()
+                                                         {
+                                                            tx.state= 'rolledback';
+                                                            cb();   
+                                                         })
+                                                         .consumed(_collect(consume))
+                                                         .error(p.trigger.error);
                                               });
 
                                           dyn.table(db.txTable._dynamo.TableName)
                                              .hash('_id',tx._id)
                                              .range('_item','target::','BEGINS_WITH')
-                                             .query(function (items)
+                                             .query(sync.results(function (items,done)
                                               {
                                                  async.forEach(items,
                                                  function (item,done)
@@ -1041,7 +1046,7 @@ var dyngo= module.exports= function (opts,cb)
                                                                                           _tx: { action: 'DELETE' } } },
                                                                    function () { done(); })
                                                                   .consumed(_collect(consume))
-                                                                  .error(p.trigger.error);
+                                                                  .error(done);
                                                          };
 
                                                      if (item._txOp=='put')
@@ -1056,7 +1061,7 @@ var dyngo= module.exports= function (opts,cb)
                                                                     .range(range.attr,range.value)
                                                                     .delete(function () { done(); })
                                                                     .consumed(_collect(consume))
-                                                                    .error(p.trigger.error); 
+                                                                    .error(done); 
                                                                else
                                                                    dyn.table(db.txTable._dynamo.TableName)
                                                                       .hash('_id',tx._id)
@@ -1087,27 +1092,20 @@ var dyngo= module.exports= function (opts,cb)
                                                                                  .error(p.trigger.error); 
                                                                        })
                                                                        .consumed(_collect(consume))
-                                                                       .error(p.trigger.error); 
+                                                                       .error(done); 
                                                            })
                                                            .consumed(_collect(consume))
-                                                           .error(p.trigger.error); 
+                                                           .error(done); 
                                                      else
                                                        clean();
                                                  },
-                                                 function (err)
-                                                 {
-                                                     if (err)
-                                                       p.trigger.error(err); 
-                                                     else
-                                                     if (!items.next)
-                                                       finished();
-                                                 });
-                                              },
+                                                 done);
+                                              }),
                                               { attrs: ['_id','_item','_txOp'],
                                            consistent: true })
                                              .error(p.trigger.error)
                                              .consumed(_collect(consume))
-                                             .end(finished);
+                                             .end(sync.end);
                                       };
 
                                   if (tx.state=='pending')
