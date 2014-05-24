@@ -505,8 +505,6 @@ var dyngo= module.exports= function (opts,cb)
             table.remove= function (filter)
             {
                 var p= dyn.promise(null,null,'consumed'),
-                    found= false,
-                    foundErr= true,
                     consume= {},
                     _consumed= function (cons)
                     {
@@ -515,14 +513,20 @@ var dyngo= module.exports= function (opts,cb)
                     },
                     _error= function (err)
                     {
-                       foundErr= true;
                        p.trigger.consumed(consume);
                        p.trigger.error(err);
                     },
-                    _success= _.after(2,function ()
+                    _success= function ()
                     {
                        p.trigger.consumed(consume);
                        p.trigger.success();
+                    },
+                    sync= dyn.syncResults(function (err)
+                    {
+                        if (err)
+                          _error(err);
+                        else
+                          _success();
                     }),
                     cursor= table.find(filter,table.indexes.length ? undefined : { _id: 1, _pos: 1 }),
                     _deleteItem= function (obj,done)
@@ -548,23 +552,13 @@ var dyngo= module.exports= function (opts,cb)
                           done);
                     };
 
-                cursor.results(function (items)
+                cursor.results(sync.results(function (items,done)
                 {
-                    found= true;
-
-                    async.forEach(items,_deleteItem,
-                    function (err)
-                    {
-                       if (err)
-                         cursor.trigger.error(err); 
-                       else
-                       if (!items.next)
-                         _success();
-                    });
-                })
+                    async.forEach(items,_deleteItem,done);
+                }))
                 .consumed(_consumed)
                 .error(_error)
-                .end(_success);
+                .end(sync.end);
 
                 return p;
             };
