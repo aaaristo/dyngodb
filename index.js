@@ -567,7 +567,6 @@ var dyngo= module.exports= function (opts,cb)
             {
                 var p= dyn.promise(null,null,'consumed'),
                     cursor= table.consistent().find(query),
-                    found= false,
                     consume= {},
                     _consumed= function (cons)
                     {
@@ -592,6 +591,13 @@ var dyngo= module.exports= function (opts,cb)
                        p.trigger.consumed(consume);
                        p.trigger.success();
                     },
+                    sync= dyn.syncResults(function (err)
+                    {
+                        if (err)
+                          _error(err);
+                        else
+                          _success();
+                    }),
                     _updateItem= function (item,done)
                     {
                        if (update.$set)
@@ -608,24 +614,17 @@ var dyngo= module.exports= function (opts,cb)
                        else
                          done(new Error('unknown update type')); 
                     },
-                    _updateItems= function (items)
+                    _updateItems= function (items,done)
                     {
-                       found= true;
-
-                       async.forEach(items,_updateItem,
-                       function (err)
-                       {
-                          if (err)
-                            cursor.trigger.error(err);
-                       }); 
+                       async.forEach(items,_updateItem,done);
                     };
 
 
                 cursor
-                     .results(_updateItems)
+                     .results(sync.results(_updateItems))
                      .consumed(_consumed)
                      .error(_error)
-                     .end(_success);
+                     .end(sync.end);
 
                 return p;
             };
