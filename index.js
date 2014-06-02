@@ -790,17 +790,64 @@ var dyngo= module.exports= function (opts,cb)
       return p;
    };
 
-   db.ensureTransactionTable= function (opts)
+   db.ensureTransactionTable= function (topts)
    { 
-      opts= _.defaults(opts || {},{ name: 'dyngo-transaction-table' });
+      topts= _.defaults(topts || {},{ name: 'dyngo-transaction-table' });
+
       var p= dyn.promise(),
           _success= function ()
           {
-              dyn.describeTable(opts.name,function (err,data)
+              dyn.describeTable(topts.name,function (err,data)
               {
                   if (!err)
                   {
                     db.txTable= { _dynamo: data.Table, indexes: [] };
+
+                    db.txTable.modify= function (read,write) { return _modify(dyn,data.Table.TableName,read,write) };
+
+                    db.txTable.drop= function ()
+                    { 
+                        var p= dyn.promise(),
+                            _success= function ()
+                            {
+                              delete db.txTable;
+                              p.trigger.success();
+                            },
+                            _check= function ()
+                            {
+                                  dyn.describeTable(data.Table.TableName,
+                                  function (err,data)
+                                  {
+                                      if (err)
+                                      {
+                                          if (err.code=='ResourceNotFoundException')
+                                            _success();
+                                          else
+                                            p.trigger.error(err);
+                                      }
+                                      else
+                                        setTimeout(_check,5000);
+                                  });
+                            };
+                
+                         if (opts.hints) console.log('This may take a while...'.yellow);
+
+                         dyn.deleteTable(data.Table.TableName,function (err)
+                         {
+                                if (err)
+                                {
+                                   if (err.code=='ResourceNotFoundException')
+                                     _success();
+                                   else
+                                     p.trigger.error(err);
+                                }
+                                else
+                                   setTimeout(_check,5000);
+                         });
+
+                         return p;
+                    };
+
                     p.trigger.success();
                   }
                   else
@@ -810,12 +857,12 @@ var dyngo= module.exports= function (opts,cb)
 
         if (opts.hints) console.log('This may take a while...'.yellow);
 
-        dyn.table(opts.name)
+        dyn.table(topts.name)
            .hash('_id','S')
            .range('_item','S')
            .create(function check()
            {
-              dyn.table(opts.name)
+              dyn.table(topts.name)
                  .hash('_id','xx')
                  .query(function ()
               {
