@@ -533,6 +533,22 @@ dyngodb2
 You can use either json or [gson](https://github.com/aaaristo/GSON) function the only difference is that the gson function
 is able to serialize cyrcular object graphs in a non-recursive way.
 
+### S3 Backup / Restore (todo: better streaming)
+
+Backup:
+<pre>
+dyngodb2
+> db.mytbl.backup({ bucket: 'mybucket' })
+</pre>
+
+This will create an S3 object named mybucket/<table>/<time>.bck
+
+Restore:
+<pre>
+dyngodb2
+> db.mytbl.restore({ bucket: 'mybucket', file: 'mybucket/<table>/<time>.bck' });
+</pre>
+
 ### Q&D migration from dyngodb to dyngodb2
 
 <pre>

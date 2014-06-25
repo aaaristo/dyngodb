@@ -9,7 +9,8 @@ var _parser= require('./lib/parser'),
     _finder= require('./lib/finder'),
     _refiner= require('./lib/refiner'),
     _index= require('./lib/indexer'),
-    _modify= require('./lib/capacity');
+    _modify= require('./lib/capacity'),
+    _backup= require('./lib/backup');
 
 const _nu= function (v)
       {
@@ -67,6 +68,7 @@ var dyngo= module.exports= function (opts,cb)
    var dyn= dyno(opts.dynamo,_.extend(opts.tx || {},{ txTable: opts.txTable })),
        finder= _finder(dyn),
        parser= _parser(dyn,opts),
+       backup= _backup(dyn,opts),
        db= _.extend({ _dyn: dyn },opts.tx,{ txTable: opts.txTable }),
        _alias= function (table)
        {
@@ -691,6 +693,10 @@ var dyngo= module.exports= function (opts,cb)
 
                 return p;
             };
+
+            table.backup= backup.backup(table._dynamo.TableName);
+
+            table.restore= backup.restore(table._dynamo.TableName);
 
             return table;
        },
