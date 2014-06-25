@@ -541,12 +541,12 @@ dyngodb2
 > db.mytbl.backup({ bucket: 'mybucket' })
 </pre>
 
-This will create an S3 object named mybucket/<table>/<time>.bck
+This will create an S3 object named mybucket/table/time.bck
 
 Restore:
 <pre>
 dyngodb2
-> db.mytbl.restore({ bucket: 'mybucket', file: 'mybucket/<table>/<time>.bck' });
+> db.mytbl.restore({ bucket: 'mybucket', file: 'mybucket/table/time.bck' });
 </pre>
 
 ### Q&D migration from dyngodb to dyngodb2
