@@ -546,6 +546,7 @@ This will create an S3 object named mybucket/table/time.bck
 Restore:
 <pre>
 dyngodb2
+> db.createCollection('mytbl')
 > db.mytbl.restore({ bucket: 'mybucket', file: 'mybucket/table/time.bck' });
 </pre>
 
