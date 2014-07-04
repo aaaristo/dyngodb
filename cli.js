@@ -464,7 +464,7 @@ var args= [function (err,db)
                     
                     if (answer.indexOf('show collections') > -1)
                     { 
-                       _.filter(_.keys(db),function (key) { return !!db[key].find; }).forEach(function (c) { console.log(c); });
+                       _.filter(_.keys(db),function (key) { return !!db[key]&&!!db[key].find; }).forEach(function (c) { console.log(c); });
                        ask();
                        return;
                     }
