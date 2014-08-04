@@ -34,8 +34,7 @@ describe('database',function ()
             function (err,_db)
             {
                db= _db; 
-               db.test.remove().success(done)
-                               .error(done); 
+               done();
             });
        });
 
@@ -263,6 +262,71 @@ describe('database',function ()
                                                 .error(_noerr);
                                     })
                                     .error(_noerr);
+                       })
+                       .error(_noerr);
+           });
+
+           it('Can insert an object with a child object array, and remove an element from the array', function (done)
+           {
+                var _noerr= noerr(done);
+
+                var par= { somedata: 'parentcarr', childs: [{ somedata: 'child1' },{ somedata: 'child2' },{ somedata: 'child3' }] };
+
+                db.test.save(par)
+                       .success(function ()
+                       {
+                             par.childs.splice(2,1);
+
+                             db.test.save(par)
+                                    .success(function ()
+                                    {
+                                         db.test.findOne({ _id: par._id })
+                                                .result(function (obj)
+                                                {
+                                                      obj.somedata.should.equal('parentcarr'); 
+                                                      obj.childs.length.should.equal(2); 
+                                                      _.pluck(obj.childs,'somedata').should.contain('child1');
+                                                      _.pluck(obj.childs,'somedata').should.contain('child2');
+                                                      done();
+                                                })
+                                                .error(_noerr);
+                                    })
+                                    .error(_noerr);
+                       })
+                       .error(_noerr);
+           });
+
+           it('Can insert an object with an independent child object array, and remove an element from the array', function (done)
+           {
+                var _noerr= noerr(done);
+
+                var par= { somedata: 'parentcarr', childs: [{ somedata: 'child1' },{ somedata: 'child2' },{ somedata: 'child3' }] };
+
+                db.test.save(par.childs)
+                       .success(function ()
+                       { 
+                            db.test.save(par)
+                                   .success(function ()
+                                   {
+                                         par.childs.splice(2,1);
+
+                                         db.test.save(par)
+                                                .success(function ()
+                                                {
+                                                     db.test.findOne({ _id: par._id })
+                                                            .result(function (obj)
+                                                            {
+                                                                  obj.somedata.should.equal('parentcarr'); 
+                                                                  obj.childs.length.should.equal(2); 
+                                                                  _.pluck(obj.childs,'somedata').should.contain('child1');
+                                                                  _.pluck(obj.childs,'somedata').should.contain('child2');
+                                                                  done();
+                                                            })
+                                                            .error(_noerr);
+                                                })
+                                                .error(_noerr);
+                                   })
+                                   .error(_noerr);
                        })
                        .error(_noerr);
            });

@@ -310,7 +310,9 @@ var dyngo= module.exports= function (opts,cb)
                                                             }
                                                             else
                                                             {
-                                                                if (!_.findWhere(desc,{ _pos: idx }))
+                                                                var elem= _.findWhere(desc,{ _id: oitem._id, _pos: oitem._pos });
+
+                                                                if (!elem||elem!=desc[idx])
                                                                   _remove({ _id: _id, _pos: idx, _ref: oitem._id+'$:$'+oitem._pos });         
                                                             }
                                                          });
@@ -537,7 +539,7 @@ var dyngo= module.exports= function (opts,cb)
                         else
                           _success();
                     }),
-                    cursor= table.find(filter,table.indexes.length ? undefined : { _id: 1, _pos: 1 }),
+                    cursor= table.find(filter,table.indexes.length ? undefined : { _id: 1, _pos: 1 }).noderef(),
                     _deleteItem= function (obj,done)
                     {
                           async.parallel([
