@@ -112,7 +112,7 @@ var dyngo= module.exports= function (opts,cb)
                    .parse(table,modifiers,cond,projection,identity)
                    .parsed(function (query)
                    {
-                       refiner= _refiner(dyn,query),
+                       refiner= _refiner(dyn,query,db),
                        cursor= finder.find(query);
                        cursor.chain(refiner);
                        refiner.chain(p);
@@ -208,6 +208,7 @@ var dyngo= module.exports= function (opts,cb)
                                 obj._id= obj._id || uuid();
                                 obj._pos= obj._pos || 0;
                                 obj._rev= (obj._rev || 0)+1;
+                                obj._table= table._dynamo.TableName,
                                 obj._refs= [];
                             },
                             _index= function (obj)
@@ -242,7 +243,7 @@ var dyngo= module.exports= function (opts,cb)
                             _save= function (obj,isCreate,isAggregate)
                             {
                                var _keys= _.keys(obj),
-                                   _omit= ['_old'],
+                                   _omit= ['_old','_table'],
                                    diffs= diff(obj._old || {},
                                                obj,
                                                function (path,key) { return key=='_old'; });
@@ -250,6 +251,12 @@ var dyngo= module.exports= function (opts,cb)
                                if (!diffs || diffs.length==0
                                     || (obj._old || {_rev: 0})._rev<obj._rev
                                   ) return;
+
+                               if (obj._table&&obj._table!=table._dynamo.TableName)
+                               {
+                                  db[obj._table].save(obj);
+                                  return;
+                               }
 
                                _hashrange(obj);
 
@@ -313,7 +320,7 @@ var dyngo= module.exports= function (opts,cb)
                                                                 var elem= _.findWhere(desc,{ _id: oitem._id, _pos: oitem._pos });
 
                                                                 if (!elem||elem!=desc[idx])
-                                                                  _remove({ _id: _id, _pos: idx, _ref: oitem._id+'$:$'+oitem._pos });         
+                                                                  _remove({ _id: _id, _pos: idx, _ref: dyn.ref(oitem) });         
                                                             }
                                                          });
                                                    }
@@ -323,7 +330,7 @@ var dyngo= module.exports= function (opts,cb)
                                                       if (val._id&&val._id!=_id)
                                                       {
                                                          _save(val);
-                                                         _save({ _id: _id, _pos: pos, _ref: val._id+'$:$'+val._pos });
+                                                         _save({ _id: _id, _pos: pos, _ref: dyn.ref(val) });
                                                          obj._refs.push(val._id);
                                                       }
                                                       else
@@ -359,7 +366,7 @@ var dyngo= module.exports= function (opts,cb)
                                        else
                                        {
                                            _save(desc);
-                                           obj['__'+key]= desc._id+'$:$'+desc._pos;
+                                           obj['__'+key]= dyn.ref(desc);
                                            obj._refs.push(desc._id);
                                            _omit.push(key);
                                        }
