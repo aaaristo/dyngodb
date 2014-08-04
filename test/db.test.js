@@ -308,7 +308,7 @@ describe('database',function ()
                             db.test.save(par)
                                    .success(function ()
                                    {
-                                         par.childs.splice(2,1);
+                                         par.childs.splice(1,1);
 
                                          db.test.save(par)
                                                 .success(function ()
@@ -319,7 +319,7 @@ describe('database',function ()
                                                                   obj.somedata.should.equal('parentcarr'); 
                                                                   obj.childs.length.should.equal(2); 
                                                                   _.pluck(obj.childs,'somedata').should.contain('child1');
-                                                                  _.pluck(obj.childs,'somedata').should.contain('child2');
+                                                                  _.pluck(obj.childs,'somedata').should.contain('child3');
                                                                   done();
                                                             })
                                                             .error(_noerr);

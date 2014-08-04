@@ -239,7 +239,7 @@ var dyngo= module.exports= function (opts,cb)
                                     });
                                 });
                             },
-                            _save= function (obj,isCreate)
+                            _save= function (obj,isCreate,isAggregate)
                             {
                                var _keys= _.keys(obj),
                                    _omit= ['_old'],
@@ -379,7 +379,12 @@ var dyngo= module.exports= function (opts,cb)
 
                                _index(obj); // index after _ fields are set so they are indexable too
 
-                               ops.unshift({ op: 'put', item: obj, omit: _omit, isCreate: isCreate }); // let the aggregate op came first of "contained" objects, so that the aggrgate version protects the rest
+                               var op= { op: 'put', item: obj, omit: _omit, isCreate: isCreate };
+
+                               if (isAggregate)
+                                 ops.unshift(op); // let the aggregate op came first of "contained" objects, so that the aggrgate version protects the rest
+                               else
+                                 ops.push(op);
                             },
                             _mput= function (gops,done)
                             {
@@ -425,7 +430,7 @@ var dyngo= module.exports= function (opts,cb)
                             };
 
 
-                        _save(obj,isCreate);
+                        _save(obj,isCreate,true);
 
                         _.keys(gops).forEach(function (table)
                         {
