@@ -539,7 +539,7 @@ var dyngo= module.exports= function (opts,cb)
                         else
                           _success();
                     }),
-                    cursor= table.find(filter,table.indexes.length ? undefined : { _id: 1, _pos: 1 }).noderef(),
+                    cursor= table.find(filter,table.indexes.length ? undefined : { _id: 1, _pos: 1 }),
                     _deleteItem= function (obj,done)
                     {
                           async.parallel([
@@ -562,6 +562,9 @@ var dyngo= module.exports= function (opts,cb)
                           }],
                           done);
                     };
+
+                if (table.indexes.length==0)
+                  cursor= cursor.noderef();
 
                 cursor.results(sync.results(function (items,done)
                 {
