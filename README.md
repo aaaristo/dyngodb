@@ -74,7 +74,7 @@ $ dyngodb2
 
 ## What dyngodb actually does
 
-* Basic find() support (basic operators, no $all, $and $or..., some projection capabilities):
+* Basic find() support (basic operators, no $and $or..., some projection capabilities):
   finds are implemented via 3 components:
 
       * parser: parses the query and produce a "query" object that is 
