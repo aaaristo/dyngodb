@@ -638,6 +638,23 @@ var dyngo= module.exports= function (opts,cb)
                               .consumed(_consumed)
                               .error(done); 
                        else
+                       if (update.$inc)
+                       {
+                           var fields= {};
+
+                           _.keys(update.$inc).forEach(function (name)
+                           {
+                               fields[name]= { action: 'ADD', value: update.$inc[name] };
+                           });
+
+                           dyn.table(item._table)
+                              .hash('_id',item._id)
+                              .range('_pos',item._pos)
+                              .updateItem({ update: fields },function() { done(); })
+                              .consumed(_collect(consume))
+                              .error(done);
+                       }
+                       else
                          done(new Error('unknown update type')); 
                     },
                     _updateItems= function (items,done)
