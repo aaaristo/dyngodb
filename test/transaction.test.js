@@ -227,6 +227,46 @@ describe('transactions',function ()
               }).error(done);
            });
 
+           it('When some object is updated more than one time the original copy is rolled back',function (done)
+           {
+               db.test.save({ _id: 'update-orig', n: 1 })
+                      .success(function ()
+               {
+                   db.transaction().transaction(function (tx)
+                   {
+                       tx.test.findOne({ _id: 'update-orig' })
+                              .result(function (obj)
+                       {
+                           obj.n++;
+                           tx.test.save(obj)
+                                  .success(function ()
+                           {
+                               obj.n++;
+                               tx.test.save(obj)
+                                      .success(function ()
+                               {
+                                   tx.rollback().rolledback(function ()
+                                   {
+                                        db.test.findOne({ _id: 'update-orig' })
+                                               .result(function (obj)
+                                        {
+                                            obj.n.should.equal(1); 
+                                            done();
+                                        })
+                                        .error(done);      
+                                   })
+                                   .error(done);      
+                               })
+                               .error(done); 
+                           })
+                           .error(done); 
+                       })
+                       .error(done);
+                   })
+                  .error(done);
+               })
+               .error(done);
+           });
        });
 
        describe('query',function ()
