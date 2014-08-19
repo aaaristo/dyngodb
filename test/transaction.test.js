@@ -227,6 +227,51 @@ describe('transactions',function ()
               }).error(done);
            });
 
+           it('If transaction A incs an object and does not commit, transaction B still see the old version of the object, when A commits, B sees the new version',
+           function (done)
+           {
+              var obj= { _id: 'update2', n: 0 };
+
+              db.test.save(obj).success(function ()
+              {
+                  db.transaction().transaction(function (A)
+                  {
+                     db.transaction().transaction(function (B)
+                     {
+                         A.test.update({},{ $inc: { n: 1 } }).success(function ()
+                         {
+                             B.test.findOne({ _id: 'update2' })
+                                   .result(function (copy)
+                                   {
+                                       copy.n.should.equal(0);
+
+                                       A.test.findOne({ _id: 'update2' })
+                                             .result(function (copy)
+                                             {
+                                                   copy.n.should.equal(1);
+
+                                                   A.commit().committed(function ()
+                                                   {
+                                                      B.test.findOne({ _id: 'update2' })
+                                                            .result(function (copy)
+                                                            {
+                                                               copy.n.should.equal(1);
+
+                                                               done();
+                                                            })
+                                                            .error(done);
+                                                   })
+                                                   .error(done);
+                                             })
+                                             .error(done);
+                                   })
+                                   .error(done);
+                         }).error(done);
+                     }).error(done);
+                  }).error(done);
+              }).error(done);
+           });
+
            it('When some object is updated more than one time the original copy is rolled back',function (done)
            {
                db.test.save({ _id: 'update-orig', n: 1 })
