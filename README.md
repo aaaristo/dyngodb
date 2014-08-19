@@ -26,12 +26,13 @@ $ export AWS_SECRET_ACCESS_KEY=......
 $ export AWS_REGION=eu-west-1
 $ dyngodb2
 > db.createCollection('test')
-> db.test.save({ name: 'John', lname: 'Smith' })
+> db.test.create({ _id: 'john', name: 'John', lname: 'Smith' }) // if the _id exists create will throw an error
 > db.test.save({ name: 'Jane', lname: 'Burden' })
 > db.test.findOne({ name: 'John' })
 > john= last
 > john.city= 'London'
 > db.test.save(john)
+> db.test.update({ _id: 'john' },{ $inc: { wives: 1, childs: 3 } }) // uses DynamoDB updateItem ADD op
 > db.test.find({ name: 'John' })
 > db.test.ensureIndex({ name: 'S' })
 > db.test.findOne({ name: 'John' })
