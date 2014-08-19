@@ -1019,14 +1019,12 @@ var dyngo= module.exports= function (opts,cb)
                                                          range= { attr: _item[4], value: _item[4]=='_pos' ? +_item[5] : _item[5] };
 
                                                      if (item._txOp=='delete')
-                                                     {
                                                          dyn.table(table)
                                                             .hash(hash.attr,hash.value)
                                                             .range(range.attr,range.value)
                                                             .delete(function () { done(); },{ expected: { _tx: tx._id } })
                                                             .consumed(_collect(consume))
                                                             .error(done);
-                                                     }
                                                      else
                                                          dyn.table(table)
                                                             .hash(hash.attr,hash.value)
@@ -1055,7 +1053,7 @@ var dyngo= module.exports= function (opts,cb)
                                              .hash('_id',tx._id)
                                              .range('_item','_')
                                              .updateItem({ update: { state: { action: 'PUT', value: 'completed' } },
-                                                         expected: { state: 'committed' } },
+                                                           expected: { state: 'committed' } },
                                              function ()
                                              {
                                                 tx.state= 'completed';
@@ -1142,7 +1140,7 @@ var dyngo= module.exports= function (opts,cb)
                                                                   .error(done);
                                                          };
 
-                                                     if (item._txOp=='put')
+                                                     if (_.contains(['put','updateItem'],item._txOp))
                                                        dyn.table(table)
                                                           .hash(hash.attr,hash.value)
                                                           .range(range.attr,range.value)
