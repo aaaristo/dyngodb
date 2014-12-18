@@ -1,7 +1,7 @@
 var should= require('chai').should(),
     assert= require('chai').assert,
     AWS = require('aws-sdk'),
-    _= require('underscore'),
+    _= require('lodash'),
     fs= require('fs'),
     dyngo=  require('../index.js');
 
