@@ -1,7 +1,7 @@
 var chai = require('chai'),
     spies = require('chai-spies'),
     AWS = require('aws-sdk'),
-    _= require('underscore'),
+    _= require('lodash'),
     dyngo=  require('../index.js');
 
 chai.use(spies);

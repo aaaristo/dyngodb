@@ -10,7 +10,7 @@ var dyngo= require('./index'),
     carrier= require('carrier'),
     util= require('util'),
     readline= require('readline'),
-    _= require('underscore'),
+    _= require('lodash'),
     path= require('path').join,
     colors = require('colors'),
     GSON = require('gson'),
@@ -604,4 +604,4 @@ var args= [function (err,db)
 if (argv.local) 
   args.unshift({ dynamo: { endpoint: new AWS.Endpoint('http://localhost:8000') } });
 
-dyngo.apply(null,args);
+dyngo.apply(null, args);

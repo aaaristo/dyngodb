@@ -1,7 +1,7 @@
 var dyno= require('./lib/dyn.js'),
     diff = require('deep-diff').diff,
     uuid= require('node-uuid').v4,
-    _= require('underscore'),
+    _= require('lodash'),
     cclone= require('circularclone'),
     async= require('async'); 
 
