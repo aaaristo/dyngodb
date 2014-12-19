@@ -3,9 +3,9 @@ var dyno= require('./lib/dyn.js'),
     uuid= require('node-uuid').v4,
     _= require('lodash'),
     cclone= require('circularclone'),
-    async= require('async'); 
+    async= require('async');
 
-var _parser= require('./lib/parser'), 
+var _parser= require('./lib/parser'),
     _finder= require('./lib/finder'),
     _refiner= require('./lib/refiner'),
     _index= require('./lib/indexer'),
@@ -15,7 +15,7 @@ var _parser= require('./lib/parser'),
 const _nu= function (v)
       {
          return typeof v!='undefined';
-      }, 
+      },
       _isobject= function (v)
       {
           return typeof v=='object'&&!Array.isArray(v);
@@ -26,8 +26,8 @@ const _nu= function (v)
       },
       _collect= function (consume)
       {
-          return function (cons) 
-          { 
+          return function (cons)
+          {
                 var c;
 
                 if (cons.table)
@@ -48,13 +48,13 @@ const _nu= function (v)
 
                     c.read+= tcons.read;
                     c.write+= tcons.write;
-                }); 
+                });
           };
       };
 
-var dyngo= module.exports= function (opts,cb)
+var dyngo= module.exports= function (opts, cb)
 {
-   var defaults= { hints: true }; 
+   var defaults= { hints: true };
 
    if (!cb)
    {
@@ -63,9 +63,9 @@ var dyngo= module.exports= function (opts,cb)
    }
 
    opts= opts || defaults;
-   opts= _.defaults(opts,defaults);
+   opts= _.defaults(opts, defaults);
 
-   var dyn= dyno(opts.dynamo,_.extend(opts.tx || {},{ txTable: opts.txTable })),
+   var dyn= dyno(opts.dynamo, _.extend(opts.tx || {},{ txTable: opts.txTable })),
        finder= _finder(dyn),
        parser= _parser(dyn,opts),
        backup= _backup(dyn,opts),
@@ -84,7 +84,7 @@ var dyngo= module.exports= function (opts,cb)
           p.trigger.clean(cclone(obj,function (key,value)
           {
              if (key.indexOf&&key.indexOf('_')==0&&key!='_id')
-               return undefined; 
+               return undefined;
              else
                return value;
           }));
@@ -122,31 +122,31 @@ var dyngo= module.exports= function (opts,cb)
 
                 p.sort= function (o)
                 {
-                  modifiers.orderby= o; 
+                  modifiers.orderby= o;
                   return p;
                 };
 
                 p.limit= function (n)
                 {
-                  modifiers.limit= n; 
+                  modifiers.limit= n;
                   return p;
                 };
 
                 p.window= function (n)
                 {
-                  modifiers.window= n; 
+                  modifiers.window= n;
                   return p;
                 };
 
                 p.skip= function (n)
                 {
-                  modifiers.skip= n; 
+                  modifiers.skip= n;
                   return p;
                 };
 
                 p.noderef= function ()
                 {
-                  modifiers.noderef= true; 
+                  modifiers.noderef= true;
                   return p;
                 };
 
@@ -156,8 +156,8 @@ var dyngo= module.exports= function (opts,cb)
                 {
                   if (fn)
                      origCount(fn);
-                  else 
-                     modifiers.count= true; 
+                  else
+                     modifiers.count= true;
 
                   return p;
                 };
@@ -176,7 +176,7 @@ var dyngo= module.exports= function (opts,cb)
                      if (items.length==0)
                        p.trigger.notfound();
                      else
-                       p.trigger.result(items[0]); 
+                       p.trigger.result(items[0]);
                 })
                 .consumed(p.trigger.consumed)
                 .error(p.trigger.error);
@@ -219,7 +219,7 @@ var dyngo= module.exports= function (opts,cb)
 
                                     _.keys(iops).forEach(function (table)
                                     {
-                                       var tops= gops[table]= gops[table] || []; 
+                                       var tops= gops[table]= gops[table] || [];
                                        tops.push.apply(tops,_.collect(iops[table],function (op) { op.index= true; return op; }));
                                        tops.index= true;
                                     });
@@ -235,7 +235,7 @@ var dyngo= module.exports= function (opts,cb)
 
                                     _.keys(iops).forEach(function (table)
                                     {
-                                       var tops= gops[table]= gops[table] || []; 
+                                       var tops= gops[table]= gops[table] || [];
                                        tops.push.apply(tops,_.collect(iops[table],function (op) { op.index= true; return op; }));
                                     });
                                 });
@@ -279,7 +279,7 @@ var dyngo= module.exports= function (opts,cb)
                                           return;
                                       }
                                     }
-                                    
+
                                     var type= typeof obj[key];
 
                                     if (type=='object'&&!_.contains(['_old','_refs'],key))
@@ -320,7 +320,7 @@ var dyngo= module.exports= function (opts,cb)
                                                                 var elem= _.findWhere(desc,{ _id: oitem._id, _pos: oitem._pos });
 
                                                                 if (!elem||elem!=desc[idx])
-                                                                  _remove({ _id: _id, _pos: idx, _ref: dyn.ref(oitem) });         
+                                                                  _remove({ _id: _id, _pos: idx, _ref: dyn.ref(oitem) });
                                                             }
                                                          });
                                                    }
@@ -370,7 +370,7 @@ var dyngo= module.exports= function (opts,cb)
                                            obj._refs.push(desc._id);
                                            _omit.push(key);
                                        }
-                                    } 
+                                    }
                                     else
                                     if (type=='string'&&!obj[key])
                                       _omit.push(key);
@@ -379,7 +379,7 @@ var dyngo= module.exports= function (opts,cb)
                                       _omit.push(key);
                                });
 
-                               if (!obj._refs.length) 
+                               if (!obj._refs.length)
                                  delete obj['_refs'];
                                else
                                  obj._refs= _.uniq(obj._refs);
@@ -405,7 +405,7 @@ var dyngo= module.exports= function (opts,cb)
                                   {
                                      var tab= dyn.table(_table),
                                          obj= op.item;
-                                       
+
                                      if (op.index)
                                        tab.hash('_hash',obj._hash)
                                           .range('_range',obj._range);
@@ -605,7 +605,7 @@ var dyngo= module.exports= function (opts,cb)
 
                             c.read+= tcons.read;
                             c.write+= tcons.write;
-                        }); 
+                        });
                     },
                     _error= function (err)
                     {
@@ -630,13 +630,13 @@ var dyngo= module.exports= function (opts,cb)
                          table.save(_.extend(item,update.$set))
                               .success(done)
                               .consumed(_consumed)
-                              .error(done); 
+                              .error(done);
                        else
                        if (update.$unset)
                          table.save(_.omit(item,_.keys(update.$unset)))
                               .success(done)
                               .consumed(_consumed)
-                              .error(done); 
+                              .error(done);
                        else
                        if (update.$inc)
                        {
@@ -655,7 +655,7 @@ var dyngo= module.exports= function (opts,cb)
                               .error(done);
                        }
                        else
-                         done(new Error('unknown update type')); 
+                         done(new Error('unknown update type'));
                     },
                     _updateItems= function (items,done)
                     {
@@ -701,7 +701,7 @@ var dyngo= module.exports= function (opts,cb)
                                 setTimeout(_check,5000);
                           });
                     };
-        
+
                 async.forEach(table.indexes,
                 function (index,done)
                 {
@@ -757,7 +757,7 @@ var dyngo= module.exports= function (opts,cb)
                     },
                     function (err)
                     {
-                       cb(err,err ? null : db);          
+                       cb(err,err ? null : db);
                     });
                 };
 
@@ -777,9 +777,9 @@ var dyngo= module.exports= function (opts,cb)
                });
        };
 
-   db.createCollection= function (name)
-   { 
-      var p= dyn.promise(),
+   db.createCollection= function (name, p)
+   {
+      var p= p || dyn.promise(),
           _success= function ()
           {
               dyn.describeTable(name,function (err,data)
@@ -830,8 +830,26 @@ var dyngo= module.exports= function (opts,cb)
       return p;
    };
 
+    db.collection= function (name)
+    {
+        var p= dyn.promise();
+        dyn.describeTable(name,function (err,data)
+        {
+            if (!err)
+            {
+                db[name]= configureTable({ _dynamo: data.Table, indexes: [] });
+                p.trigger.success();
+            }
+            else
+                db.createCollection(name, p);
+
+        });
+
+        return p;
+    };
+
    db.ensureTransactionTable= function (topts)
-   { 
+   {
       topts= _.defaults(topts || {},{ name: 'dyngo-transaction-table' });
 
       var p= dyn.promise(),
@@ -846,7 +864,7 @@ var dyngo= module.exports= function (opts,cb)
                     db.txTable.modify= function (read,write) { return _modify(dyn,data.Table.TableName,read,write) };
 
                     db.txTable.drop= function ()
-                    { 
+                    {
                         var p= dyn.promise(),
                             _success= function ()
                             {
@@ -869,7 +887,7 @@ var dyngo= module.exports= function (opts,cb)
                                         setTimeout(_check,5000);
                                   });
                             };
-                
+
                          if (opts.hints) console.log('This may take a while...'.yellow);
 
                          dyn.deleteTable(data.Table.TableName,function (err)
@@ -945,7 +963,7 @@ var dyngo= module.exports= function (opts,cb)
 
              var tab= dyn.table(db.txTable._dynamo.TableName),
                  init= function (tx)
-                 {               
+                 {
                      dyn.table(db.txTable._dynamo.TableName)
                         .hash('_id',tx._id)
                         .range('_item','_')
@@ -957,7 +975,7 @@ var dyngo= module.exports= function (opts,cb)
                            function (err,tx)
                            {
                               if (err)
-                              {  
+                              {
                                 p.trigger.error(err);
                                 return;
                               }
@@ -984,7 +1002,7 @@ var dyngo= module.exports= function (opts,cb)
                                              function ()
                                              {
                                                 tx.state= 'committed';
-                                                cb();   
+                                                cb();
                                              })
                                              .consumed(_collect(consume))
                                              .error(function (err)
@@ -1037,7 +1055,7 @@ var dyngo= module.exports= function (opts,cb)
                                                             function () { done(); })
                                                             .consumed(_collect(consume))
                                                             .error(done);
-                                                      
+
                                                  },
                                                  done);
                                               }),
@@ -1057,7 +1075,7 @@ var dyngo= module.exports= function (opts,cb)
                                              function ()
                                              {
                                                 tx.state= 'completed';
-                                                cb();   
+                                                cb();
                                              })
                                              .consumed(p.trigger.consumed)
                                              .error(p.trigger.error);
@@ -1107,7 +1125,7 @@ var dyngo= module.exports= function (opts,cb)
                                                          function ()
                                                          {
                                                             tx.state= 'rolledback';
-                                                            cb();   
+                                                            cb();
                                                          })
                                                          .consumed(_collect(consume))
                                                          .error(p.trigger.error);
@@ -1152,7 +1170,7 @@ var dyngo= module.exports= function (opts,cb)
                                                                     .range(range.attr,range.value)
                                                                     .delete(function () { done(); })
                                                                     .consumed(_collect(consume))
-                                                                    .error(done); 
+                                                                    .error(done);
                                                                else
                                                                    dyn.table(db.txTable._dynamo.TableName)
                                                                       .hash('_id',tx._id)
@@ -1180,13 +1198,13 @@ var dyngo= module.exports= function (opts,cb)
                                                                                  .range(range.attr,range.value)
                                                                                  .put(copy,function () { done(); })
                                                                                  .consumed(p.trigger.consumed)
-                                                                                 .error(p.trigger.error); 
+                                                                                 .error(p.trigger.error);
                                                                        })
                                                                        .consumed(_collect(consume))
-                                                                       .error(done); 
+                                                                       .error(done);
                                                            })
                                                            .consumed(_collect(consume))
-                                                           .error(done); 
+                                                           .error(done);
                                                      else
                                                        clean();
                                                  },
