@@ -15,7 +15,7 @@
   ],
   "dependencies": {
     "async": "^0.2.10",
-    "aws-sdk": "~1.4.1",
+    "aws-sdk": "~2.5.5",
     "carrier": "~0.1.13",
     "circularclone": "~0.1.7",
     "coffee-script": "^1.7.1",
